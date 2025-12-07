@@ -4,6 +4,8 @@ import Tarot from './components/Tarot';
 import Numerology from './components/Numerology';
 import { AstrologyService } from './services/astrology';
 import { Language } from './types';
+// --- ChatBot Import ---
+import ChatBot from './components/ChatBot'; 
 
 export const ThemeContext = createContext<{
   theme: 'light' | 'dark';
@@ -344,6 +346,10 @@ export default function AstroMasonApp() {
             )}
 
           </main>
+          
+          {/* ChatBot lagt til nederst i strukturen */}
+          <ChatBot />
+
         </div>
       </LangContext.Provider>
     </ThemeContext.Provider>
