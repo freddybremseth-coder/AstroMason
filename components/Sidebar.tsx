@@ -1,6 +1,6 @@
 
 import React, { useContext } from 'react';
-import { LayoutDashboard, Library, GraduationCap, Sun, Settings, FileText, UserCircle, Users, Globe, ExternalLink, CircleCheck, LogOut, Sparkles, Fingerprint } from './Icons';
+import { LayoutDashboard, Library, GraduationCap, Sun, Settings, FileText, UserCircle, Users, Globe, ExternalLink, CircleCheck, LogOut, Sparkles, Fingerprint } from './icons';
 import { UserRole, NavItem, Language } from '../types';
 import { UI_TRANSLATIONS } from '../constants';
 import { LangContext } from '../App';

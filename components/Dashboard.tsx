@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Sun, Moon, ExternalLink, FileText, Activity, Star, Sparkles, Users, GraduationCap } from './Icons';
+import { Sun, Moon, ExternalLink, FileText, Activity, Star, Sparkles, Users, GraduationCap } from './icons';
 import { UserRole } from '../types';
 
 interface DashboardProps {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AUTHORS, RESOURCES } from '../constants';
-import { Search, ExternalLink, FileText } from './Icons';
+import { Search, ExternalLink, FileText } from './icons';
 
 const Library: React.FC = () => {
   const [filter, setFilter] = useState<string>('All');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Fingerprint, RotateCcw } from './Icons';
+import { Fingerprint, RotateCcw } from './icons';
 
 const Numerology: React.FC = () => {
   const [birthDate, setBirthDate] = useState("");

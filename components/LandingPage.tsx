@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Star, Sparkles, GraduationCap, ExternalLink, CircleCheck, CirclePlay, Globe, Shield, X, User, Lock } from './Icons';
+import { Star, Sparkles, GraduationCap, ExternalLink, CircleCheck, CirclePlay, Globe, Shield, X, User, Lock } from './icons';
 import { UserRole } from '../types';
 
 interface LandingPageProps {
