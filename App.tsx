@@ -1,5 +1,5 @@
 import React, { useState, createContext } from 'react';
-import { Sparkles, Sun, BookOpen, Fingerprint, ChevronRight, X, RotateCcw, CheckCircle, ArrowUpRight, Zap, Calendar, Layers, Hourglass, Clock, MapPin, SquareCheck } from './components/Icons';
+import { Sparkles, Sun, BookOpen, Fingerprint, ChevronRight, X, RotateCcw, CheckCircle, ArrowUpRight, Zap, Calendar, Layers, Hourglass, Clock, MapPin, SquareCheck } from './components/icons';
 import Tarot from './components/Tarot';
 import Numerology from './components/Numerology';
 import { AstrologyService } from './services/astrology';
