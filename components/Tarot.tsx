@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, CircleHelp, Star, FileText, Heart, Briefcase, Zap, RefreshCw, Save, MessageSquare, User, Fingerprint, Eye, Compass, RotateCw, X, RotateCcw, Brain, ArrowUpRight, CheckCircle, ChevronRight } from './Icons';
+import { Sparkles, CircleHelp, Star, FileText, Heart, Briefcase, Zap, RefreshCw, Save, MessageSquare, User, Fingerprint, Eye, Compass, RotateCw, X, RotateCcw, Brain, ArrowUpRight, CheckCircle, ChevronRight } from './icons';
 import { CalculatedChart } from '../types';
 import { MAJOR_ARCANA } from '../constants';
 import { AstrologyService } from '../services/astrology';
