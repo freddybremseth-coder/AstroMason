@@ -20,6 +20,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const languages: {code: Language, label: string, flag: string}[] = [
     { code: 'no', label: 'Norsk', flag: '🇳🇴' },
     { code: 'en', label: 'English', flag: '🇬🇧' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+    { code: 'ru', label: 'Русский', flag: '🇷🇺' },
     { code: 'es', label: 'Español', flag: '🇪🇸' }
   ];
 

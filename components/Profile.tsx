@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useContext } from 'react';
-// Added User to the imported icons list
-import { UserCircle, User, Key, History, Save, Download, FileText, BookOpen, Trash2, Shield, Lock, ExternalLink, Moon, Sun, Monitor, Printer, X, Loader2, CheckCircle, Info, MapPin, Calendar, Clock as ClockIcon } from './Icons';
+import { UserCircle, User, Key, History, Save, Download, FileText, BookOpen, Trash2, Shield, Lock, ExternalLink, Moon, Sun, Monitor, Printer, X, Loader2, CheckCircle, Info, MapPin, Calendar, Clock as ClockIcon, ChevronRight } from './Icons';
 import { ThemeContext, LangContext } from '../App';
 import { UI_TRANSLATIONS } from '../constants';
 
@@ -21,7 +20,11 @@ interface SavedReport {
   content: string; 
 }
 
-const Profile: React.FC = () => {
+interface ProfileProps {
+  onUpdate?: () => void;
+}
+
+const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
   const { theme, setTheme } = useContext(ThemeContext);
   const { lang } = useContext(LangContext);
   const t = UI_TRANSLATIONS[lang];
@@ -64,6 +67,7 @@ const Profile: React.FC = () => {
     setTimeout(() => {
         setIsSaving(false);
         setShowSuccess(true);
+        if (onUpdate) onUpdate(); // Varsle App om endringen
         setTimeout(() => setShowSuccess(false), 3000);
     }, 800);
   };
@@ -100,12 +104,6 @@ const Profile: React.FC = () => {
             <button onClick={() => setSelectedReport(null)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
                 <X size={20} />
             </button>
-            <div className="absolute top-8 right-8 no-print">
-                <button onClick={() => window.print()} className="p-3 bg-amber-500 rounded-full text-black hover:bg-amber-400 transition-all shadow-xl">
-                    <Printer size={20} />
-                </button>
-            </div>
-            
             <header className="text-center space-y-4 mb-16">
                 <h1 className="text-5xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
                     {selectedReport.report?.title || selectedReport.meta.title}
@@ -114,22 +112,14 @@ const Profile: React.FC = () => {
                     {new Date(selectedReport.meta.date).toLocaleDateString()} • {selectedReport.meta.type}
                 </p>
             </header>
-
             <article className="prose prose-invert prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
                 <div className="first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left mb-12">
                     {selectedReport.report?.essenceSummary}
                 </div>
-
-                {selectedReport.report?.planetChapters?.map((c: any, i: number) => (
-                    <div key={i} className="my-12 print-page-break">
-                         <h4 className="text-3xl font-serif text-amber-200 border-b border-white/5 pb-4 mb-6">{c.planet}</h4>
-                         <div className="text-lg leading-relaxed">{c.content}</div>
-                    </div>
-                ))}
             </article>
         </div>
         <button onClick={() => setSelectedReport(null)} className="mx-auto block px-12 py-5 bg-white/5 border border-white/10 rounded-2xl no-print hover:bg-white/10 transition-all font-black uppercase tracking-widest text-xs">
-            {t.backToArchive}
+            Tilbake til Arkivet
         </button>
     </div>
   );
@@ -138,10 +128,7 @@ const Profile: React.FC = () => {
     <div className="max-w-7xl mx-auto py-12 px-6 animate-fade-in space-y-12">
       <header className="flex flex-col md:flex-row md:items-center gap-6">
         <div className="w-24 h-24 rounded-[2.5rem] bg-gradient-to-br from-amber-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-serif font-bold shadow-2xl relative">
-          {soulData.name.charAt(0) || <UserCircle size={48} />}
-          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-[#050511] flex items-center justify-center">
-             <CheckCircle size={14} />
-          </div>
+          {soulData.name.charAt(0) || "S"}
         </div>
         <div className="space-y-2">
           <h2 className="text-5xl font-serif font-bold text-white">Sjelssenteret</h2>
@@ -151,12 +138,11 @@ const Profile: React.FC = () => {
 
       {showSuccess && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-up z-[600]">
-            <CheckCircle size={20} /> {t.saveSuccess}
+            <CheckCircle size={20} /> Profilen din er oppdatert og arkivert
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        
         <div className="lg:col-span-6 space-y-8">
           <section className="bg-[#0f0f25]/80 backdrop-blur-xl border border-white/5 p-10 rounded-[3.5rem] shadow-2xl space-y-10">
             <div className="space-y-2 border-l-4 border-amber-500 pl-6">
@@ -165,53 +151,28 @@ const Profile: React.FC = () => {
             </div>
             
             <div className="space-y-8">
-              {/* Seksjon 1: Identitet */}
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
-                   <User size={14} /> Trinn 1: Sjelens Navn
+                   <User size={14} /> Sjelens Navn
                 </h4>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Fullt Navn (Brukes også for Numerologi)</label>
-                  <input type="text" value={soulData.name} onChange={e => setSoulData({...soulData, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all" placeholder="Ditt fødselsnavn..." />
-                </div>
+                <input type="text" value={soulData.name} onChange={e => setSoulData({...soulData, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all" placeholder="Ditt fødselsnavn..." />
               </div>
 
-              {/* Seksjon 2: Fødselstid */}
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
-                   <Calendar size={14} /> Trinn 2: Tidskapselen
+                   <Calendar size={14} /> Fødselstid
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Fødselsdato</label>
                     <input type="date" value={soulData.date} onChange={e => setSoulData({...soulData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Klokkeslett</label>
                     <input type="time" value={soulData.time} onChange={e => setSoulData({...soulData, time: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none" />
-                    <p className="text-[9px] text-slate-600 italic mt-1">Viktig for Ascendant og hus-cusper.</p>
-                  </div>
                 </div>
               </div>
 
-              {/* Seksjon 3: Geografi */}
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
-                   <MapPin size={14} /> Trinn 3: Jordisk Koordinat
+                   <MapPin size={14} /> Fødested
                 </h4>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Fødested (By, Land)</label>
-                  <input type="text" value={soulData.location} onChange={e => setSoulData({...soulData, location: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all" placeholder="f.eks. Oslo, Norge" />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Foretrukket Hussystem</label>
-                <select value={soulData.houseSystem} onChange={e => setSoulData({...soulData, houseSystem: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none">
-                  <option value="Placidus">Placidus (Klassisk Moderne)</option>
-                  <option value="Koch">Koch (Psykologisk)</option>
-                  <option value="Whole Sign">Whole Sign (Hellenistisk)</option>
-                </select>
+                <input type="text" value={soulData.location} onChange={e => setSoulData({...soulData, location: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all" placeholder="f.eks. Oslo, Norge" />
               </div>
 
               <button onClick={saveSoulData} disabled={isSaving} className="w-full py-6 bg-amber-500 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] text-black hover:bg-amber-400 transition-all shadow-2xl flex items-center justify-center gap-3">
@@ -220,50 +181,31 @@ const Profile: React.FC = () => {
               </button>
             </div>
           </section>
-
-          <section className="bg-white/5 border border-white/5 p-8 rounded-[3rem] space-y-6">
-            <h3 className="font-serif text-xl text-amber-100 flex items-center gap-3"><Key size={20} className="text-amber-500" /> API-nøkler</h3>
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Nødvendig for AI-tolkninger</p>
-            <input type="password" value={apiKeys.gemini} onChange={e => setApiKeys({gemini: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-xs text-white" placeholder="Google Gemini Key..." />
-            <button onClick={saveApiKeys} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl font-bold uppercase text-[10px] hover:bg-white/10 transition-all">Oppdater Nøkkel</button>
-          </section>
         </div>
 
         <div className="lg:col-span-6 space-y-8">
-          <section className="bg-white/[0.02] border border-white/5 p-10 rounded-[4rem] shadow-2xl min-h-[700px] flex flex-col">
+          <section className="bg-white/[0.02] border border-white/5 p-10 rounded-[4rem] shadow-2xl min-h-[500px] flex flex-col">
             <div className="flex items-center justify-between mb-12">
               <div className="flex items-center gap-4 text-amber-100">
                 <History size={32} className="text-amber-500" />
-                <h3 className="font-serif text-3xl">Mine Innsikter</h3>
-              </div>
-              <div className="px-5 py-2 bg-white/5 rounded-full border border-white/5">
-                <span className="text-amber-500 font-black text-xs">{savedReports.length}</span>
+                <h3 className="font-serif text-3xl">Lagrede Innsikter</h3>
               </div>
             </div>
 
             {savedReports.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center opacity-10 space-y-6 text-center">
                 <BookOpen size={100} />
-                <div className="space-y-2">
-                   <p className="font-serif italic text-2xl">Ditt personlige arkiv er tomt</p>
-                   <p className="text-[10px] uppercase tracking-widest">Generer din første rapport for å fylle arkivene</p>
-                </div>
+                <p className="font-serif italic text-2xl">Ditt arkiv er tomt</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[800px] pr-2 custom-scrollbar">
+              <div className="grid grid-cols-1 gap-4">
                 {savedReports.map((report) => (
-                  <div key={report.id} className="bg-[#0a0a1a]/80 border border-white/5 p-6 rounded-[2.5rem] group hover:border-amber-500/30 transition-all flex items-center justify-between gap-6">
-                    <div className="flex-1">
-                      <div className="mb-2 flex items-center gap-3">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">{report.type}</span>
-                        <span className="text-[9px] text-slate-600 uppercase font-black">{new Date(report.date).toLocaleDateString()}</span>
-                      </div>
-                      <h4 className="text-lg font-serif text-white group-hover:text-amber-100 transition-colors line-clamp-1">{report.title}</h4>
+                  <div key={report.id} className="bg-[#0a0a1a]/80 border border-white/5 p-6 rounded-[2.5rem] group hover:border-amber-500/30 transition-all flex items-center justify-between">
+                    <div>
+                      <h4 className="text-lg font-serif text-white group-hover:text-amber-100 transition-colors">{report.title}</h4>
+                      <p className="text-[9px] text-slate-500 uppercase font-black">{new Date(report.date).toLocaleDateString()}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                       <button onClick={() => openReport(report)} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all">Åpne</button>
-                       <button onClick={() => deleteReport(report.id)} className="p-4 text-slate-600 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                    </div>
+                    <button onClick={() => openReport(report)} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all">Åpne</button>
                   </div>
                 ))}
               </div>

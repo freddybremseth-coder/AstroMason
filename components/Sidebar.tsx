@@ -39,6 +39,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const languages: {code: Language, label: string, flag: string}[] = [
     { code: 'no', label: 'Norsk', flag: '🇳🇴' },
     { code: 'en', label: 'English', flag: '🇬🇧' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+    { code: 'ru', label: 'Русский', flag: '🇷🇺' },
     { code: 'es', label: 'Español', flag: '🇪🇸' }
   ];
 
@@ -77,7 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <ExternalLink size={12} className="rotate-90" />
               </button>
               {showLangMenu && (
-                <div className="absolute bottom-full left-0 w-full mb-2 bg-[#0f0f25] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="absolute bottom-full left-0 w-full mb-2 bg-[#0f0f25] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden max-h-60 overflow-y-auto">
                   {languages.map(l => (
                     <button key={l.code} onClick={() => { setLang(l.code); setShowLangMenu(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase text-slate-300 hover:bg-white/5 transition-colors">
                       <span>{l.flag}</span> {l.label}

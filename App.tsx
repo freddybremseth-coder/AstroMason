@@ -17,6 +17,19 @@ import { UI_TRANSLATIONS } from './constants';
 export const LangContext = createContext<{lang: Language, setLang: (l: Language) => void}>({} as any);
 export const ThemeContext = createContext<{theme: 'light' | 'dark', setTheme: (t: 'light' | 'dark') => void}>({} as any);
 
+const TRADITION_OPTIONS = [
+  { id: 'esoteric', label: 'Esoterisk', icon: Sparkles },
+  { id: 'classical', label: 'Klassisk', icon: Scroll },
+  { id: 'vedic', label: 'Vedisk', icon: Globe },
+  { id: 'merged', label: 'Modern', icon: Sun }
+];
+
+const ANALYSIS_OPTIONS = [
+  { id: 'natal', label: 'Natal-kart', icon: UserCircle },
+  { id: 'transit', label: 'Transitter', icon: Activity },
+  { id: 'relocation', label: 'Flytting', icon: MapPin }
+];
+
 export default function AstroMasonApp() {
   const [lang, setLang] = useState<Language>('no');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -29,72 +42,98 @@ export default function AstroMasonApp() {
   const [showReport, setShowReport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [loadingText, setLoadingText] = useState('Konsulterer arkivene...');
   const [reportData, setReportData] = useState<any>(null);
-  const [isArchiving, setIsArchiving] = useState(false);
   const [subMode, setSubMode] = useState<string>('natal');
   const [astrologyMode, setAstrologyMode] = useState<AstrologyMode>('esoteric');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [relocationCity, setRelocationCity] = useState('');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [selectedPlanet, setSelectedPlanet] = useState<PlanetPosition | null>(null);
   
-  // Timeline State
   const [transitAge, setTransitAge] = useState(0);
   const [transitDate, setTransitDate] = useState(new Date().toISOString().split('T')[0]);
   const [isCalculatingTransit, setIsCalculatingTransit] = useState(false);
 
   const t = UI_TRANSLATIONS[lang];
 
-  const TRADITION_OPTIONS = [
-    { id: 'esoteric', label: t.esotericTitle, icon: Sparkles },
-    { id: 'classical', label: t.classicalTitle, icon: Scroll },
-    { id: 'merged', label: t.modernTitle, icon: Sun },
-    { id: 'vedic', label: t.vedicTitle, icon: Globe },
-  ];
-
-  const ANALYSIS_OPTIONS = [
-    { id: 'natal', label: t.natalTitle, icon: UserCircle },
-    { id: 'transit', label: t.transitTitle, icon: Activity },
-    { id: 'relocation', label: t.relocationTitle, icon: MapPin },
-  ];
-
-  const refreshNatalData = async () => {
-    const savedName = localStorage.getItem('soul_name');
-    if (savedName) {
-      const birthData = {
-          name: savedName,
-          date: localStorage.getItem('soul_date') || '',
-          time: localStorage.getItem('soul_time') || '',
-          location: localStorage.getItem('soul_location') || '',
-          houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
+  const generateReport = async (type: string) => {
+    if (!activeChart) return;
+    setIsLoading(true);
+    setLoadingText('AstroMason dechiffrerer din sjel...');
+    try {
+      const data = await AstrologyService.generateAIReport(
+        activeChart,
+        type,
+        astrologyMode,
+        lang,
+        natalChart || undefined
+      );
+      setReportData(data);
+      setShowReport(true);
+      
+      const saved = JSON.parse(localStorage.getItem('astromason_reports') || '[]');
+      const newEntry = {
+        id: Date.now().toString(),
+        title: data.title || `Kronike: ${type}`,
+        date: new Date().toISOString(),
+        type: 'Astrologi',
+        content: JSON.stringify(data)
       };
-      if (birthData.name && birthData.date) {
-          const chart = await AstrologyService.calculateChart(birthData, astrologyMode);
-          setNatalChart(chart);
-          if (subMode === 'natal') setActiveChart(chart);
-          
-          // Calculate initial age and date
-          const birthDate = new Date(birthData.date);
-          const current = new Date();
-          const age = current.getFullYear() - birthDate.getFullYear();
-          setTransitAge(Math.max(0, age));
-          setTransitDate(current.toISOString().split('T')[0]);
-      }
+      localStorage.setItem('astromason_reports', JSON.stringify([newEntry, ...saved]));
+    } catch (e) {
+      console.error(e);
+      alert("Kunne ikke koble til de dype arkivene akkurat nå.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsInitialLoading(false);
   };
 
-  useEffect(() => { refreshNatalData(); }, [astrologyMode]);
+  const refreshNatalData = async (silent = false) => {
+    if (!silent) setIsVerifying(true);
+    try {
+      const savedName = localStorage.getItem('soul_name');
+      if (savedName) {
+        const birthData = {
+            name: savedName,
+            date: localStorage.getItem('soul_date') || '',
+            time: localStorage.getItem('soul_time') || '',
+            location: localStorage.getItem('soul_location') || '',
+            houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
+        };
+        if (birthData.name && birthData.date) {
+            const chart = await AstrologyService.calculateChart(birthData, astrologyMode);
+            setNatalChart(chart);
+            if (subMode === 'natal') {
+                setActiveChart(chart);
+            }
+            
+            const birthDate = new Date(birthData.date);
+            const current = new Date();
+            const age = current.getFullYear() - birthDate.getFullYear();
+            setTransitAge(Math.max(0, age));
+        } else {
+            setNatalChart(null);
+            setActiveChart(null);
+        }
+      } else {
+        setNatalChart(null);
+        setActiveChart(null);
+      }
+    } catch (e) {
+      console.error("Klarte ikke å laste kartdata", e);
+    } finally {
+      setIsInitialLoading(false);
+      setIsVerifying(false);
+    }
+  };
+
+  useEffect(() => { refreshNatalData(true); }, [astrologyMode]);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
     const hasData = localStorage.getItem('soul_name');
-    if (!hasData) {
-      setActiveTab('profile');
-    } else {
-      setActiveTab('dashboard');
-    }
+    if (!hasData) setActiveTab('profile');
+    else setActiveTab('dashboard');
   };
 
   const calculateTransitsForDate = async (dateStr: string) => {
@@ -103,18 +142,17 @@ export default function AstroMasonApp() {
     try {
       const birthDate = new Date(natalChart.date);
       const targetDate = new Date(dateStr);
-      
-      // Update Age
       const age = targetDate.getFullYear() - birthDate.getFullYear();
       setTransitAge(Math.max(0, age));
 
+      // VIKTIG: Send med koordinatene fra natalChart for å slippe AI-geokoding
       const transitData = await AstrologyService.calculateChart({
         name: `Livsløp: ${dateStr}`,
         date: dateStr,
         time: natalChart.time || '12:00',
         location: natalChart.location,
         houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
-      }, astrologyMode);
+      }, astrologyMode, natalChart.coords);
       
       setTransitChart(transitData);
       setActiveChart(transitData);
@@ -136,26 +174,9 @@ export default function AstroMasonApp() {
     calculateTransitsForDate(dateStr);
   };
 
-  // Sync transit age when subMode changes to transit
-  useEffect(() => {
-    if (subMode === 'transit' && natalChart) {
-      calculateTransitsForDate(transitDate);
-    }
-  }, [subMode]);
-
-  const generateReport = async (type: string) => {
-    if (!activeChart || !natalChart) return;
-    setIsLoading(true);
-    setLoadingText('Skriver din livsbok...');
-    try {
-      const data = await AstrologyService.generateAIReport(activeChart, type, astrologyMode, lang, natalChart);
-      setReportData(data);
-      setShowReport(true);
-    } catch (e) {
-      setErrorMsg("Rapportgenerering feilet.");
-    } finally {
-      setIsLoading(false);
-    }
+  const getRelevantAspects = (planetName: string) => {
+    if (!activeChart) return [];
+    return activeChart.aspects.filter(a => a.planet1 === planetName || a.planet2 === planetName);
   };
 
   if (!isAuthenticated) return (
@@ -168,19 +189,39 @@ export default function AstroMasonApp() {
     <LangContext.Provider value={{ lang, setLang }}>
     <ThemeContext.Provider value={{ theme, setTheme }}>
       <div className={`min-h-screen flex ${theme === 'dark' ? 'bg-[#050511] text-white' : 'bg-slate-50 text-slate-900'} selection:bg-indigo-500/30 font-sans`}>
-        <Sidebar currentView={activeTab} setView={(v) => { setShowReport(false); setSelectedPlanet(null); setActiveTab(v); if(v === 'astrology') refreshNatalData(); }} isMobileOpen={false} setIsMobileOpen={() => {}} onLogout={() => setIsAuthenticated(false)} />
+        <Sidebar 
+          currentView={activeTab} 
+          setView={(v) => { 
+            setShowReport(false); 
+            setSelectedPlanet(null); 
+            setActiveTab(v); 
+            if(v === 'astrology') refreshNatalData(); 
+          }} 
+          isMobileOpen={false} 
+          setIsMobileOpen={() => {}} 
+          onLogout={() => setIsAuthenticated(false)} 
+        />
 
         <main className="flex-1 overflow-y-auto p-6 md:p-12">
-          {isInitialLoading ? (
-            <div className="flex flex-col items-center justify-center h-[80vh] space-y-8">
-               <Loader2 className="animate-spin text-amber-500" size={64} />
-               <p className="font-serif text-xl text-amber-100 animate-pulse">Sjekker sjelens arkiver...</p>
+          {isInitialLoading || isVerifying ? (
+            <div className="flex flex-col items-center justify-center h-[80vh] space-y-8 animate-fade-in">
+               <div className="relative">
+                  <Loader2 className="animate-spin text-amber-500" size={80} />
+                  <Star className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-amber-200/40 animate-pulse" size={32} />
+               </div>
+               <div className="text-center space-y-2">
+                  <p className="font-serif text-2xl text-amber-100 italic">Sjekker fødselsdata i arkivene...</p>
+                  <p className="text-[10px] uppercase text-slate-500 tracking-[0.4em] font-black">Dechiffrerer dine kosmiske koordinater</p>
+               </div>
             </div>
           ) : (
             <>
               {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
               {activeTab === 'horoscope' && <Horoscope natalChart={natalChart} />}
               {activeTab === 'chinese' && <ChineseAstrology />}
+              {activeTab === 'profile' && <Profile onUpdate={() => refreshNatalData(true)} />}
+              {activeTab === 'tarot' && <Tarot />}
+              {activeTab === 'numerology' && <Numerology />}
 
               {activeTab === 'astrology' && !natalChart && (
                 <div className="max-w-xl mx-auto py-12 animate-fade-in no-print text-center">
@@ -188,9 +229,11 @@ export default function AstroMasonApp() {
                      <UserCircle size={80} className="mx-auto text-indigo-400 opacity-20" />
                      <div className="space-y-4">
                         <h2 className="text-4xl font-serif text-amber-100">Identitet mangler</h2>
-                        <p className="text-slate-400">Vi kunne ikke finne fødselsdataene dine. Gå til Sjelssenteret for å koble deg til de kosmiske strømmene.</p>
+                        <p className="text-slate-400">Vi kunne ikke finne dine fødselsdata. Du må konfigurere din profil i Sjelssenteret før stjernene kan tale.</p>
                      </div>
-                     <button onClick={() => setActiveTab('profile')} className="px-12 py-5 bg-indigo-600 rounded-2xl font-black uppercase text-xs text-white hover:bg-indigo-500 transition-all">Gå til Sjelssenteret</button>
+                     <button onClick={() => setActiveTab('profile')} className="px-12 py-5 bg-indigo-600 rounded-2xl font-black uppercase text-xs text-white hover:bg-indigo-500 transition-all flex items-center gap-3 mx-auto shadow-xl shadow-indigo-900/40">
+                        Gå til Sjelssenteret <ChevronRight size={16} />
+                     </button>
                    </div>
                 </div>
               )}
@@ -199,7 +242,7 @@ export default function AstroMasonApp() {
                 <div className="max-w-7xl mx-auto space-y-12">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 no-print">
                      <div className="bg-white/5 p-8 rounded-[3rem] border border-white/5 space-y-6">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-amber-500">{t.traditionLabel}</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-amber-500">Tradisjon</h3>
                         <div className="grid grid-cols-2 gap-3">
                             {TRADITION_OPTIONS.map(opt => (
                                 <button key={opt.id} onClick={() => {setAstrologyMode(opt.id as any); setSelectedPlanet(null);}} className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 ${astrologyMode === opt.id ? 'bg-amber-500 border-amber-400 text-black' : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5'}`}>
@@ -213,14 +256,13 @@ export default function AstroMasonApp() {
                      </div>
 
                      <div className="bg-white/5 p-8 rounded-[3rem] border border-white/5 space-y-6">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400">{t.analysisLabel}</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400">Analyse</h3>
                         <div className="grid grid-cols-2 gap-3">
                             {ANALYSIS_OPTIONS.map(opt => (
                                 <button key={opt.id} onClick={() => { 
                                     setSubMode(opt.id);
                                     setSelectedPlanet(null);
                                     if (opt.id === 'natal') setActiveChart(natalChart);
-                                    if (opt.id === 'relocation' && relocatedChart) setActiveChart(relocatedChart);
                                     if (opt.id === 'transit') calculateTransitsForDate(transitDate);
                                 }} className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 ${subMode === opt.id ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5'}`}>
                                     <opt.icon size={18} />
@@ -236,23 +278,17 @@ export default function AstroMasonApp() {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 print-container">
                     <div className="lg:col-span-7 space-y-6">
                         <div className="bg-white/5 p-12 rounded-[4rem] border border-white/10 relative overflow-hidden chart-to-print shadow-2xl">
-                           <div className="absolute top-10 left-12 z-10">
-                              <h4 className="text-xl font-serif text-amber-100">{activeChart?.clientName}</h4>
-                              <p className="text-[10px] text-slate-500 uppercase tracking-widest">{subMode === 'transit' ? `Livsløp: ${transitDate} (${transitAge} år)` : activeChart?.location}</p>
-                           </div>
-                           <div className="absolute top-10 right-12 z-10 no-print">
-                              <button onClick={() => window.print()} className="p-3 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 text-amber-500 transition-all shadow-xl">
-                                 <Printer size={20} />
-                              </button>
-                           </div>
                            {activeChart && (
                              <div className={isCalculatingTransit ? 'opacity-20 transition-opacity' : 'opacity-100'}>
                                 <ChartWheel positions={activeChart.positions} ascendantDegree={activeChart.ascendantDegree} houses={activeChart.houseCusps} aspects={activeChart.aspects} onPlanetClick={setSelectedPlanet} />
                              </div>
                            )}
                            {isCalculatingTransit && (
-                             <div className="absolute inset-0 flex items-center justify-center">
-                                <Loader2 className="animate-spin text-amber-500" size={48} />
+                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] rounded-[4rem] z-20">
+                                <div className="flex flex-col items-center gap-4">
+                                   <Loader2 className="animate-spin text-amber-500" size={64} />
+                                   <p className="text-amber-100 font-serif text-lg animate-pulse">Oppdaterer transitter...</p>
+                                </div>
                              </div>
                            )}
                         </div>
@@ -277,7 +313,6 @@ export default function AstroMasonApp() {
                                         <span className="text-4xl font-serif text-amber-400">{transitAge} år</span>
                                     </div>
                                  </div>
-
                                  <div className="space-y-4 pt-4 border-t border-white/5">
                                     <input 
                                         type="range" 
@@ -287,11 +322,6 @@ export default function AstroMasonApp() {
                                         onChange={(e) => handleAgeChange(parseInt(e.target.value))}
                                         className="w-full h-2 bg-indigo-900/50 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                     />
-                                    <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-                                        <span>Fødsel</span>
-                                        <span>Livets Midtvei</span>
-                                        <span>Fullbyrdelse</span>
-                                    </div>
                                  </div>
                             </div>
                         )}
@@ -300,9 +330,6 @@ export default function AstroMasonApp() {
                     <div className="lg:col-span-5 space-y-8 no-print">
                       {selectedPlanet ? (
                         <div className="bg-[#0f0f25] p-10 rounded-[3rem] border border-amber-500/30 space-y-6 animate-slide-up shadow-2xl relative overflow-hidden">
-                          <div className="absolute -top-10 -right-10 opacity-5">
-                            <Sparkles size={140} />
-                          </div>
                           <button onClick={() => setSelectedPlanet(null)} className="absolute top-6 right-6 text-slate-500 hover:text-white"><X size={20}/></button>
                           <div className="flex items-center gap-4">
                              <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center text-4xl text-amber-500 border border-amber-500/20">{selectedPlanet.symbol}</div>
@@ -311,65 +338,107 @@ export default function AstroMasonApp() {
                                 <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">{selectedPlanet.sign} {selectedPlanet.degree}° {selectedPlanet.minute}'</p>
                              </div>
                           </div>
+                          
                           <div className="space-y-4 pt-4 border-t border-white/5">
                             <div className="bg-black/30 p-4 rounded-xl">
                                <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Hus-plassering</p>
                                <p className="text-sm text-indigo-200">Plassert i ditt {selectedPlanet.house}. hus</p>
                             </div>
-                            <div className="text-slate-300 text-sm leading-relaxed font-light italic">
+
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">Aktiv Resonans (Aspekter)</p>
+                                {getRelevantAspects(selectedPlanet.name).length > 0 ? (
+                                    <div className="space-y-2">
+                                        {getRelevantAspects(selectedPlanet.name).map((a, idx) => (
+                                            <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5 group hover:border-amber-500/30 transition-all">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-lg text-white font-serif">{a.planet1 === selectedPlanet.name ? a.planet2 : a.planet1}</span>
+                                                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">{a.type}</span>
+                                                </div>
+                                                <span className="text-[9px] text-slate-500">Orb: {a.orb}°</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-500 italic">Ingen sterke aspekter for øyeblikket.</p>
+                                )}
+                            </div>
+
+                            <div className="text-slate-300 text-sm leading-relaxed font-light italic bg-indigo-500/5 p-4 rounded-xl border border-indigo-500/10">
                                {selectedPlanet.isRetrograde && <p className="text-red-400 text-[10px] font-black uppercase mb-2">● Retrograd - Indre refleksjon påkrevd</p>}
-                               <span>Dette indikerer en dyp kobling til sjelens {selectedPlanet.house}. livsområde. Se etter aspekter i kartet for å forstå hvordan denne energien flyter.</span>
+                               <span>Dette indikerer en dyp kobling til sjelens {selectedPlanet.house}. hus. {getRelevantAspects(selectedPlanet.name).length > 0 ? `Aspektene til ${getRelevantAspects(selectedPlanet.name).map(a => a.planet1 === selectedPlanet.name ? a.planet2 : a.planet1).join(', ')} farger denne energiene og skaper en dynamisk flyt i din personlighet.` : 'Denne energien står her i sin rene form, en isolert kilde til kraft i ditt kart.'}</span>
                             </div>
                           </div>
                         </div>
                       ) : (
                         <div className="bg-[#0f0f25]/40 p-10 rounded-[3rem] border border-white/5 flex flex-col items-center justify-center text-center space-y-4 min-h-[300px] border-dashed">
-                           {subMode === 'transit' ? (
-                             <>
-                               <ClockIcon size={48} className="text-indigo-500/40" />
-                               <div className="space-y-2">
-                                  <p className="font-serif italic text-slate-400 text-lg">Livets Porter ved {transitAge} år</p>
-                                  <div className="flex flex-col gap-2">
-                                    <span className={`text-[10px] px-3 py-1 rounded-full border ${transitAge >= 28 && transitAge <= 30 ? 'bg-amber-500/20 border-amber-500 text-amber-200' : 'bg-white/5 border-white/5 text-slate-600'}`}>SATURN RETUR (28-30 år)</span>
-                                    <span className={`text-[10px] px-3 py-1 rounded-full border ${transitAge >= 40 && transitAge <= 44 ? 'bg-amber-500/20 border-amber-500 text-amber-200' : 'bg-white/5 border-white/5 text-slate-600'}`}>URANUS OPPOSISJON (40-44 år)</span>
-                                    <span className={`text-[10px] px-3 py-1 rounded-full border ${transitAge >= 50 && transitAge <= 52 ? 'bg-amber-500/20 border-amber-500 text-amber-200' : 'bg-white/5 border-white/5 text-slate-600'}`}>CHIRON RETUR (50-52 år)</span>
-                                  </div>
-                               </div>
-                             </>
-                           ) : (
-                             <>
-                               <Compass size={48} className="text-slate-700" />
-                               <p className="font-serif italic text-slate-500">Trykk på en planet for å lese sjelens melding</p>
-                             </>
-                           )}
+                           <Compass size={48} className="text-slate-700" />
+                           <p className="font-serif italic text-slate-500">Trykk på en planet i kartet for å lese sjelens melding</p>
                         </div>
                       )}
 
                       <button onClick={() => generateReport(subMode)} className="w-full py-8 bg-gradient-to-r from-amber-400 to-amber-600 rounded-[2.5rem] font-black uppercase text-xs text-black shadow-2xl hover:scale-[1.02] transition-all">
-                        <Scroll size={20} className="inline mr-2" /> {subMode === 'transit' ? `Skriv Livsbok for år ${transitAge}` : t.writeBook}
+                        <Scroll size={20} className="inline mr-2" /> Skriv Min Livsbok
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {activeTab === 'profile' && <Profile />}
-              {activeTab === 'tarot' && <Tarot />}
-              {activeTab === 'numerology' && <Numerology />}
+              {activeTab === 'astrology' && showReport && reportData && (
+                <div className="max-w-4xl mx-auto py-12 animate-fade-in space-y-12 pb-32">
+                  <div className="bg-[#0a0a1a] p-12 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
+                    <button onClick={() => setShowReport(false)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
+                      <X size={20} />
+                    </button>
+                    <header className="text-center space-y-4 mb-16">
+                      <h1 className="text-5xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
+                        {reportData.title}
+                      </h1>
+                      <p className="text-sm uppercase tracking-widest text-slate-500 font-black">
+                        {new Date().toLocaleDateString()} • {subMode.toUpperCase()}
+                      </p>
+                    </header>
+                    <article className="prose prose-invert prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
+                      <div className="first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left mb-12">
+                        {reportData.essenceSummary}
+                      </div>
+                      {reportData.planetChapters?.map((chapter: any, i: number) => (
+                        <div key={i} className="mb-12">
+                          <h3 className="text-2xl font-serif text-amber-100 mb-4">{chapter.planet}</h3>
+                          <div className="text-slate-400 font-light">{chapter.content}</div>
+                        </div>
+                      ))}
+                      {reportData.specialSection && (
+                        <div className="bg-white/5 p-8 rounded-3xl mb-12 border border-white/10">
+                          <h3 className="text-xl font-serif text-amber-500 mb-4">Spesialanalyse</h3>
+                          <div className="text-slate-400 font-light">{reportData.specialSection}</div>
+                        </div>
+                      )}
+                      <div className="mt-12 pt-12 border-t border-white/5 italic text-amber-500/80 text-center text-3xl font-serif">
+                        {reportData.mantra}
+                      </div>
+                    </article>
+                    
+                    <div className="mt-20 flex justify-center gap-6 no-print">
+                      <button onClick={() => setShowReport(false)} className="px-10 py-5 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all">
+                        Tilbake
+                      </button>
+                      <button onClick={() => window.print()} className="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-indigo-500 transition-all">
+                        <Printer size={18} /> Skriv ut Kronike
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </main>
 
         {isLoading && (
           <div className="fixed inset-0 z-[500] bg-[#050511]/90 backdrop-blur-3xl flex flex-col items-center justify-center space-y-8">
-            <div className="relative">
-              <Loader2 className="animate-spin text-amber-500" size={120} />
-              <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-amber-200 animate-pulse" size={48} />
-            </div>
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl font-serif text-amber-100">{loadingText}</h2>
-              <p className="text-slate-500 text-xs uppercase tracking-[0.5em] font-black">Dekrypterer kosmos...</p>
-            </div>
+            <Loader2 className="animate-spin text-amber-500" size={120} />
+            <h2 className="text-3xl font-serif text-amber-100">{loadingText}</h2>
           </div>
         )}
       </div>

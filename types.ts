@@ -103,6 +103,7 @@ export interface CalculatedChart {
   date: string;
   time: string;
   location: string;
+  coords?: { lat: number; lng: number };
   positions: PlanetPosition[];
   aspects: Aspect[];
   ascendant: string;
