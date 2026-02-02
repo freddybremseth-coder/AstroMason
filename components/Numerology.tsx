@@ -1,104 +1,192 @@
-import React, { useState } from 'react';
-import { Fingerprint, RotateCcw } from './icons';
 
-const Numerology: React.FC = () => {
-  const [birthDate, setBirthDate] = useState("");
-  const [lifePathNum, setLifePathNum] = useState<number | null>(null);
+import React, { useState, useEffect } from 'react';
+import { Fingerprint, RotateCcw, Sparkles, Loader2, BookOpen, Scroll, Star } from './Icons';
+import { GoogleGenAI } from "@google/genai";
+
+interface NumerologyProps {
+  initialDate?: string;
+  initialName?: string;
+}
+
+const Numerology: React.FC<NumerologyProps> = ({ initialDate, initialName }) => {
+  const [birthDate, setBirthDate] = useState(initialDate || "");
+  const [fullName, setFullName] = useState(initialName || "");
+  const [results, setResults] = useState<{ lifePath: number; expression: number } | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [deepAnalysis, setDeepAnalysis] = useState<string | null>(null);
 
-  const calculateLifePath = () => {
-    if (!birthDate) return;
+  const calculateNumerology = async () => {
+    if (!birthDate || !fullName) return;
     setIsCalculating(true);
+    setDeepAnalysis(null);
     
-    // Simulate calculation delay
-    setTimeout(() => {
-        // Real calculation logic
-        const digits = birthDate.replace(/-/g, '').split('').map(Number);
-        let sum = digits.reduce((a, b) => a + b, 0);
-        
-        while (sum > 9 && sum !== 11 && sum !== 22 && sum !== 33) {
-            sum = sum.toString().split('').map(Number).reduce((a, b) => a + b, 0);
-        }
-        
-        setLifePathNum(sum);
+    // 1. Calculate Life Path (Date)
+    const dateDigits = birthDate.replace(/-/g, '').split('').map(Number);
+    let lpSum = dateDigits.reduce((a, b) => a + b, 0);
+    while (lpSum > 9 && ![11, 22, 33].includes(lpSum)) {
+        lpSum = lpSum.toString().split('').map(Number).reduce((a, b) => a + b, 0);
+    }
+
+    // 2. Calculate Expression Number (Name) - Pythagorean System
+    const pythagoreanMap: Record<string, number> = {
+        a:1, j:1, s:1, b:2, k:2, t:2, c:3, l:3, u:3, d:4, m:4, v:4, e:5, n:5, w:5, f:6, o:6, x:6, g:7, p:7, y:7, h:8, q:8, z:8, i:9, r:9
+    };
+    const nameDigits = fullName.toLowerCase().replace(/[^a-z]/g, '').split('').map(char => pythagoreanMap[char] || 0);
+    let expSum = nameDigits.reduce((a, b) => a + b, 0);
+    while (expSum > 9 && ![11, 22, 33].includes(expSum)) {
+        expSum = expSum.toString().split('').map(Number).reduce((a, b) => a + b, 0);
+    }
+
+    setResults({ lifePath: lpSum, expression: expSum });
+
+    // 3. AI Deep Analysis (AstroMason Persona)
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Som AstroMason - The Deep Chronicler, gi en omfattende numerologisk analyse på NORSK for ${fullName}. 
+            Livsvei-nummer: ${lpSum}. Uttrykks-nummer (Navn): ${expSum}. 
+            Bruk et esoterisk og arketypsk språk. Forklar hvordan disse to tallene interagerer. 
+            Følg Nivå 3 (Livsboken) stilen med dype innsikter. Minst 600 ord.`,
+            config: {
+                systemInstruction: "Du er en mester-numerolog som ser sammenhengen mellom tall, sjel og kosmos. Skriv poetisk, men med substans."
+            }
+        });
+        setDeepAnalysis(response.text);
+    } catch (e) {
+        console.error("AI analysis failed", e);
+        setDeepAnalysis("De kosmiske arkivene for numerologi er midlertidig utilgjengelige, men dine tall står sterkt i lyset.");
+    } finally {
         setIsCalculating(false);
-    }, 1000);
+    }
   };
 
-  const getNumberMeaning = (num: number) => {
-      const meanings: Record<number, string> = {
-          1: "Lederen. Du er her for å stå på egne ben, være original og ta initiativ.",
-          2: "Diplomaten. Du er her for å skape harmoni, samarbeid og forståelse.",
-          3: "Kunstneren. Du er her for å uttrykke deg kreativt og spre glede.",
-          4: "Byggeren. Du er her for å skape stabilitet, orden og varige strukturer.",
-          5: "Eventyreren. Du er her for å oppleve frihet, forandring og mangfold.",
-          6: "Beskytteren. Du er her for å ta ansvar, vise omsorg og skape skjønnhet.",
-          7: "Sannhetssøkeren. Du er her for å analysere, finne åndelig visdom og forstå dypet.",
-          8: "Visjonæren. Du er her for å mestre den materielle verden og utøve autoritet.",
-          9: "Humanisten. Du er her for å tjene verden med visdom og medfølelse.",
-          11: "Mesterlæreren (Mestertall). Høy intuitiv innsikt og inspirasjon.",
-          22: "Mesterbyggeren (Mestertall). Evnen til å gjøre store drømmer til virkelighet.",
-          33: "Mesterlæreren (Mestertall). Høyeste grad av åndelig tjeneste."
-      };
-      return meanings[num] || "Et tall fylt med potensial.";
-  };
+  useEffect(() => {
+    if (initialDate && initialName) {
+        calculateNumerology();
+    }
+  }, []);
 
   return (
-    <div className="max-w-md mx-auto animate-fade-in text-center p-6 min-h-[500px] flex flex-col justify-center">
-        <header className="mb-10 space-y-4">
-            <div className="w-20 h-20 mx-auto rounded-full bg-indigo-900/20 border border-indigo-500/30 flex items-center justify-center">
-                <Fingerprint size={40} className="text-indigo-300" />
+    <div className="max-w-4xl mx-auto animate-fade-in py-12 px-6">
+        <header className="text-center mb-12 space-y-4">
+            <div className="relative inline-block">
+                <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full"></div>
+                <div className="relative w-24 h-24 mx-auto rounded-full bg-[#0a0a1a] border border-indigo-500/30 flex items-center justify-center shadow-2xl">
+                    <Fingerprint size={48} className="text-indigo-400" />
+                </div>
             </div>
             <div>
-                <h2 className="text-3xl font-serif text-indigo-100">Numerologi</h2>
-                <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-[0.2em]">Tallenes hemmelige språk</p>
+                <h2 className="text-5xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-indigo-300">Sjelens Tallkode</h2>
+                <p className="text-indigo-400 text-xs uppercase tracking-[0.4em] mt-2 font-bold italic">"Dechiffrer ditt kosmiske fotavtrykk"</p>
             </div>
         </header>
 
-        <div className="bg-[#0f0f25]/80 backdrop-blur-md rounded-2xl p-8 border border-white/5 space-y-8 shadow-2xl relative overflow-hidden">
-            {/* Background Glow */}
-            <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-900/20 rounded-full blur-[80px]"></div>
-
-            {!lifePathNum ? (
-                <>
-                    <div className="space-y-4 relative z-10">
-                        <label className="block text-[10px] uppercase tracking-[0.2em] text-indigo-300/70">Din Fødselsdato</label>
-                        <input 
-                            type="date" 
-                            onChange={(e) => setBirthDate(e.target.value)}
-                            className="w-full bg-[#050511] border border-slate-800 rounded-lg p-4 text-center text-white focus:border-amber-500/50 focus:outline-none transition-all" 
-                        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Input Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+                <div className="bg-[#0f0f25]/80 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl">
+                    <h3 className="text-amber-200 text-xs uppercase tracking-widest font-bold mb-6 flex items-center gap-2">
+                        <Scroll size={14} /> Dine Date
+                    </h3>
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-slate-500 font-black ml-1">Fullt Navn</label>
+                            <input 
+                                type="text" 
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                placeholder="Navn for vibrasjon"
+                                className="w-full bg-[#050511] border border-white/10 rounded-2xl p-4 text-white focus:border-amber-500/50 outline-none transition-all placeholder:opacity-20"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-slate-500 font-black ml-1">Fødselsdato</label>
+                            <input 
+                                type="date" 
+                                value={birthDate}
+                                onChange={(e) => setBirthDate(e.target.value)}
+                                className="w-full bg-[#050511] border border-white/10 rounded-2xl p-4 text-white focus:border-amber-500/50 outline-none transition-all" 
+                            />
+                        </div>
+                        <button 
+                            onClick={calculateNumerology}
+                            disabled={!birthDate || !fullName || isCalculating}
+                            className="w-full py-5 bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-500 hover:to-indigo-700 text-white rounded-2xl uppercase tracking-widest text-[10px] font-black transition-all shadow-xl shadow-indigo-900/40 disabled:opacity-30"
+                        >
+                            {isCalculating ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <Loader2 className="animate-spin" size={16} /> Analyserer...
+                                </span>
+                            ) : 'Åpne Tallenes Arkiv'}
+                        </button>
                     </div>
-                    <button 
-                        onClick={calculateLifePath}
-                        disabled={!birthDate || isCalculating}
-                        className="w-full py-4 bg-gradient-to-r from-indigo-900 to-slate-900 border border-indigo-500/30 hover:border-indigo-400 text-white rounded-lg uppercase tracking-[0.2em] text-xs font-bold transition-all relative z-10"
-                    >
-                        {isCalculating ? 'Kalkulerer...' : 'Kalkuler Livsvei'}
-                    </button>
-                </>
-            ) : (
-                <div className="space-y-8 animate-slide-up relative z-10">
-                    <div className="w-32 h-32 mx-auto rounded-full border-2 border-amber-500/30 flex items-center justify-center bg-amber-900/10 relative">
-                        <div className="absolute inset-0 border border-amber-500/10 rounded-full animate-ping opacity-20"></div>
-                        <div className="absolute inset-0 bg-stardust opacity-50 rounded-full"></div>
-                        <span className="text-6xl font-serif text-amber-100 drop-shadow-lg">{lifePathNum}</span>
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-serif text-indigo-100 mb-2">Livsvei {lifePathNum}</h3>
-                        <p className="text-sm text-slate-300 leading-relaxed font-light">
-                            {getNumberMeaning(lifePathNum)}
-                        </p>
-                    </div>
-                    <button 
-                        onClick={() => setLifePathNum(null)} 
-                        className="text-xs text-indigo-400 hover:text-white flex items-center justify-center gap-2 mx-auto transition-colors"
-                    >
-                        <RotateCcw size={12} />
-                        Beregn på nytt
-                    </button>
                 </div>
-            )}
+            </div>
+
+            {/* Analysis Content */}
+            <div className="lg:col-span-2 space-y-8">
+                {!results ? (
+                    <div className="h-full flex items-center justify-center border-2 border-dashed border-white/5 rounded-[3rem] p-12 text-center group">
+                        <div className="space-y-4 opacity-30 group-hover:opacity-50 transition-opacity">
+                            <Star size={48} className="mx-auto text-indigo-400" />
+                            <p className="font-serif italic text-xl">Skriv inn dine data for å avdekke din numerologiske profil...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-8 animate-slide-up">
+                        {/* Summary Circles */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="bg-[#0f0f25]/60 p-8 rounded-[3rem] border border-white/5 text-center relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-3xl -z-10"></div>
+                                <p className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-black mb-4">Livsvei</p>
+                                <div className="text-6xl font-serif text-amber-100 mb-2 drop-shadow-[0_0_15px_rgba(251,191,36,0.2)]">{results.lifePath}</div>
+                                <p className="text-[10px] text-slate-500 italic">Sjelens overordnede formål</p>
+                            </div>
+                            <div className="bg-[#0f0f25]/60 p-8 rounded-[3rem] border border-white/5 text-center relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -z-10"></div>
+                                <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-400 font-black mb-4">Uttrykk</p>
+                                <div className="text-6xl font-serif text-indigo-100 mb-2 drop-shadow-[0_0_15px_rgba(129,140,248,0.2)]">{results.expression}</div>
+                                <p className="text-[10px] text-slate-500 italic">Dine talenter og verktøy</p>
+                            </div>
+                        </div>
+
+                        {/* AI Deep Analysis Section */}
+                        <div className="bg-[#0a0a1a] p-10 md:p-14 rounded-[4rem] border border-white/5 shadow-inner relative">
+                            <div className="absolute top-8 right-10 opacity-10">
+                                <Sparkles size={120} />
+                            </div>
+                            
+                            {isCalculating && !deepAnalysis ? (
+                                <div className="py-20 flex flex-col items-center justify-center space-y-6">
+                                    <Loader2 className="animate-spin text-amber-500" size={48} />
+                                    <p className="font-serif text-2xl text-amber-100 animate-pulse">AstroMason dechiffrerer tallenes dypeste mysterier...</p>
+                                </div>
+                            ) : deepAnalysis ? (
+                                <article className="prose prose-invert max-w-none">
+                                    <div className="flex items-center gap-3 mb-8 border-b border-white/5 pb-4">
+                                        <BookOpen className="text-amber-500" size={24} />
+                                        <h3 className="text-3xl font-serif text-white m-0">Sjelens Kronike</h3>
+                                    </div>
+                                    <div className="text-slate-300 leading-[2] text-lg font-light first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left whitespace-pre-wrap">
+                                        {deepAnalysis}
+                                    </div>
+                                    <div className="mt-12 pt-8 border-t border-white/5 text-center italic text-slate-500 text-sm">
+                                        Generert av AstroMason Intelligence • Tallene lyver aldri.
+                                    </div>
+                                </article>
+                            ) : null}
+                        </div>
+
+                        <button 
+                            onClick={() => { setResults(null); setDeepAnalysis(null); }} 
+                            className="text-xs text-indigo-500 hover:text-white flex items-center justify-center gap-2 mx-auto transition-colors font-bold uppercase tracking-widest"
+                        >
+                            <RotateCcw size={12} /> Start på nytt
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     </div>
   );

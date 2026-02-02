@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Course, Module, Lesson, QuizQuestion } from '../types';
-import { CirclePlay, CircleCheck, Lock, Clock, Trophy, ArrowLeft, Download, Share2, Award, UserCircle, FileText, CircleHelp, SquareCheck, Loader2, X } from './icons';
+import { CirclePlay, CircleCheck, Lock, Clock, Trophy, ArrowLeft, Download, Share2, Award, UserCircle, FileText, CircleHelp, SquareCheck, Loader2, X } from './Icons';
 import { supabase } from '../lib/supabase';
 import { COURSES as MOCK_COURSES } from '../constants';
 

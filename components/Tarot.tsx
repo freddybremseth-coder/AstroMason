@@ -1,407 +1,300 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, CircleHelp, Star, FileText, Heart, Briefcase, Zap, RefreshCw, Save, MessageSquare, User, Fingerprint, Eye, Compass, RotateCw, X, RotateCcw, Brain, ArrowUpRight, CheckCircle, ChevronRight } from './icons';
+
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { Sparkles, Star, FileText, Download, Save, History, X, Wallet, CreditCard, Shield, CheckCircle, Loader2, Scroll, Heart, Briefcase, Zap, Info } from './Icons';
 import { CalculatedChart } from '../types';
 import { MAJOR_ARCANA } from '../constants';
 import { AstrologyService } from '../services/astrology';
+import { LangContext } from '../App';
 
-// --- Assets & Icons Mockup ---
 const CardBack = () => (
-  <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-purple-900 rounded-xl border border-indigo-400/30 flex items-center justify-center relative overflow-hidden shadow-2xl group cursor-pointer transform transition-transform hover:scale-105">
-    <div className="absolute inset-0 bg-stardust opacity-30"></div>
-    <div className="w-16 h-16 border-2 border-indigo-300/20 rotate-45 flex items-center justify-center backdrop-blur-sm">
-      <Star className="text-indigo-200/50 w-8 h-8" />
+  <div className="w-full h-full bg-gradient-to-br from-indigo-950 to-purple-950 rounded-2xl border border-indigo-500/30 flex items-center justify-center relative overflow-hidden shadow-2xl group cursor-pointer transform transition-transform hover:scale-[1.02]">
+    <div className="absolute inset-0 bg-stardust opacity-20"></div>
+    <div className="w-20 h-20 border-2 border-indigo-300/10 rotate-45 flex items-center justify-center backdrop-blur-sm">
+      <Star className="text-indigo-200/30 w-10 h-10" />
     </div>
   </div>
 );
 
-// --- Data Constants ---
-
 const SPREADS = [
-    { id: 'one', name: 'Dagens Kort (1 Kort)', count: 1, positions: ['Fokus / Råd'] },
-    { id: 'three_time', name: 'Tiden (3 Kort)', count: 3, positions: ['Fortid (Grunnlaget)', 'Nåtid (Utfordringen)', 'Fremtid (Utfallet)'] },
-    { id: 'five_decision', name: 'Veivalget (5 Kort)', count: 5, positions: ['Nåsituasjonen', 'Utfordringen', 'Det Skjulte', 'Råd', 'Sannsynlig Utfall'] },
-    { id: 'celtic_cross', name: 'Keltisk Kors (10 Kort)', count: 10, positions: ['Nåsituasjonen', 'Utfordringen', 'Det Bevisste', 'Det Ubevisste', 'Fortid', 'Fremtid', 'Selvet', 'Omgivelser', 'Håp & Frykt', 'Endelig Utfall'] }
+    { id: 'one', name: 'Dagens Kort (1 Kort)', count: 1, positions: ['Sjelens Budskap'] },
+    { id: 'three_time', name: 'Tiden (3 Kort)', count: 3, positions: ['Fortid', 'Nåtid', 'Fremtid'] },
+    { id: 'relationship', name: 'Relasjonen (3 Kort)', count: 3, positions: ['Deg', 'Den Andre', 'Dynamikken'] },
+    { id: 'celtic_cross', name: 'Keltisk Kors (10 Kort)', count: 10, positions: ['Kjernen', 'Utfordring', 'Mål', 'Røtter', 'Fortid', 'Fremtid', 'Selvet', 'Omgivelser', 'Frykt', 'Utfall'] }
 ];
 
-const READING_STYLES = [
-    { id: 'psychological', name: 'Jungiansk Dybdepsykologi' },
-    { id: 'general', name: 'Helhetlig & Balansert' },
-    { id: 'esoteric', name: 'Esoterisk / Sjelelig' },
+const STYLES = [
+    { id: 'esoteric', label: 'Esoterisk', desc: 'Sjelens skjulte språk' },
+    { id: 'psychological', label: 'Psykologisk', desc: 'Jungiansk dybde' },
+    { id: 'classical', label: 'Klassisk', desc: 'Tradisjonell innsikt' }
 ];
-
-const THEMES = [
-    { id: 'general', name: 'Generelt' },
-    { id: 'love', name: 'Kjærlighet' },
-    { id: 'career', name: 'Karriere' }
-];
-
-interface TarotCardData {
-    card: typeof MAJOR_ARCANA[0];
-    isReversed: boolean;
-}
 
 const Tarot: React.FC = () => {
-    // Client & Configuration States
-    const [savedClients, setSavedClients] = useState<CalculatedChart[]>([]);
-    const [selectedClient, setSelectedClient] = useState<CalculatedChart | null>(null);
-    const [readingStyle, setReadingStyle] = useState(READING_STYLES[0]);
-
-    // Selection States
-    const [selectedSpread, setSelectedSpread] = useState(SPREADS[1]); 
-    const [selectedTheme, setSelectedTheme] = useState(THEMES[0]);
+    const { lang } = useContext(LangContext);
+    const [credits, setCredits] = useState<number>(parseInt(localStorage.getItem('tarot_credits') || '0'));
+    const [showPayment, setShowPayment] = useState(false);
+    const [selectedSpread, setSelectedSpread] = useState(SPREADS[1]);
+    const [selectedStyle, setSelectedStyle] = useState('esoteric');
     const [userContext, setUserContext] = useState('');
-    const [allowReversals, setAllowReversals] = useState(false);
-
-    // Game States
-    const [cards, setCards] = useState<TarotCardData[]>([]);
+    const [cards, setCards] = useState<any[]>([]);
     const [revealed, setRevealed] = useState<boolean[]>([]);
     const [isShuffling, setIsShuffling] = useState(false);
-    
-    // Report State
     const [report, setReport] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
 
-    // Load clients from LocalStorage
     useEffect(() => {
-        const saved = localStorage.getItem('astroMasonCharts');
-        if (saved) {
-            try {
-                setSavedClients(JSON.parse(saved));
-            } catch (e) { console.error("Could not load clients", e); }
-        }
-    }, []);
+        localStorage.setItem('tarot_credits', credits.toString());
+    }, [credits]);
 
-    // Reset when spread changes
-    useEffect(() => {
-        setCards([]);
-        setRevealed([]);
-        setReport('');
-    }, [selectedSpread]);
-
-    const drawCards = () => {
+    const handleDraw = () => {
         setIsShuffling(true);
-        setCards([]);
-        setRevealed(new Array(selectedSpread.count).fill(false));
         setReport('');
+        const shuffled = [...MAJOR_ARCANA].sort(() => 0.5 - Math.random());
+        const draw = shuffled.slice(0, selectedSpread.count).map(c => ({
+            card: c,
+            isReversed: Math.random() > 0.8
+        }));
         
-        // Simulate shuffle delay with visual feedback
         setTimeout(() => {
-            const shuffled = [...MAJOR_ARCANA].sort(() => 0.5 - Math.random());
-            const selected = shuffled.slice(0, selectedSpread.count).map(card => ({
-                card,
-                isReversed: allowReversals ? Math.random() > 0.5 : false
-            }));
-            setCards(selected);
+            setCards(draw);
+            setRevealed(new Array(selectedSpread.count).fill(false));
             setIsShuffling(false);
         }, 1500);
     };
 
-    const handleReveal = (index: number) => {
-        if (!revealed[index]) {
-            const newRevealed = [...revealed];
-            newRevealed[index] = true;
-            setRevealed(newRevealed);
+    const revealCard = (index: number) => {
+        const newRevealed = [...revealed];
+        newRevealed[index] = true;
+        setRevealed(newRevealed);
+    };
 
-            // Check if all cards are revealed to generate "report"
-            if (newRevealed.every(r => r === true)) {
-                generateDeepReport(newRevealed, cards);
-            }
+    const requestAnalysis = async () => {
+        if (credits <= 0) {
+            setShowPayment(true);
+            return;
+        }
+
+        setIsGenerating(true);
+        try {
+            const clientData = {
+                clientName: localStorage.getItem('soul_name') || 'Søkende Sjel',
+                ascendant: 'Ukjent'
+            };
+            // Fixed: Added lang as the 7th argument to generateTarotReport
+            const text = await AstrologyService.generateTarotReport(cards, selectedSpread, selectedStyle, 'Generelt', clientData, userContext, lang);
+            setReport(text);
+            setCredits(prev => prev - 1);
+        } catch (e) {
+            alert("De kosmiske strømmene ble avbrutt. Prøv igjen.");
+        } finally {
+            setIsGenerating(false);
         }
     };
 
-    const generateDeepReport = async (currentRevealed: boolean[], currentCards: TarotCardData[]) => {
-        setIsGenerating(true);
-        // Use the advanced Astrology Service generator
-        const generatedText = await AstrologyService.generateTarotReport(
-            currentCards, 
-            selectedSpread, 
-            readingStyle.id, 
-            selectedTheme.id, 
-            selectedClient, 
-            userContext
-        );
-        
-        setReport(generatedText);
-        setIsGenerating(false);
+    const saveToArchive = () => {
+        const saved = JSON.parse(localStorage.getItem('astromason_reports') || '[]');
+        const newEntry = {
+            id: Date.now().toString(),
+            title: `Tarot: ${selectedSpread.name}`,
+            date: new Date().toISOString(),
+            type: 'Tarot',
+            content: report
+        };
+        localStorage.setItem('astromason_reports', JSON.stringify([newEntry, ...saved]));
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 3000);
     };
 
-    const handleCloseReport = () => {
-        setReport('');
-        setCards([]);
-        setRevealed([]);
+    const downloadReport = () => {
+        const blob = new Blob([report], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AstroMason_Tarot_${selectedSpread.id}.txt`;
+        a.click();
     };
 
-    const getGridClass = () => {
-        const count = selectedSpread.count;
-        if (count === 1) return 'grid-cols-1 place-items-center max-w-sm mx-auto';
-        if (count === 3) return 'grid-cols-1 md:grid-cols-3';
-        if (count === 5) return 'grid-cols-2 md:grid-cols-5';
-        if (count === 7) return 'grid-cols-2 md:grid-cols-4';
-        if (count === 10) return 'grid-cols-2 md:grid-cols-5';
-        return 'grid-cols-1 md:grid-cols-3';
+    const buyCredits = (amount: number) => {
+        setCredits(prev => prev + amount);
+        setShowPayment(false);
     };
 
     return (
-        <div className="min-h-screen bg-[#050511] text-white p-6 md:p-8 animate-fade-in relative rounded-2xl overflow-hidden border border-gray-800 font-sans">
-            
-            {/* Background Ambience */}
-            <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px]"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-900/20 rounded-full blur-[120px]"></div>
-                <div className="absolute inset-0 bg-stardust opacity-30"></div>
-            </div>
-
-            <div className="relative z-10 max-w-7xl mx-auto">
-                {/* Header & Controls */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
-                    <div className="text-center md:text-left">
-                        <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-                            <Sparkles className="text-amber-200" size={24} />
-                            <h2 className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-white to-indigo-100">
-                                Det Hellige Rommet
-                            </h2>
-                        </div>
-                        <p className="text-indigo-200/60 text-sm uppercase tracking-[0.2em] font-medium">
-                            Profesjonell Tarot Syntese
-                        </p>
-                    </div>
-
-                    <button 
-                        onClick={drawCards}
-                        disabled={isShuffling || cards.length > 0}
-                        className="group relative px-8 py-3 bg-[#13132b] rounded-full border border-indigo-500/30 hover:bg-[#1a1a35] hover:border-indigo-400/50 transition-all overflow-hidden shadow-lg shadow-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                        <span className="flex items-center justify-center gap-3 text-indigo-100 uppercase tracking-[0.2em] text-xs font-bold">
-                            <RefreshCw size={16} className={isShuffling ? 'animate-spin' : ''} />
-                            {isShuffling ? 'Blander Energiene...' : 'Trekk Nye Kort'}
-                        </span>
-                    </button>
+        <div className="max-w-7xl mx-auto py-12 px-6 animate-fade-in space-y-12">
+            <header className="flex flex-col md:flex-row justify-between items-center gap-8 bg-indigo-950/20 backdrop-blur-xl p-10 rounded-[3.5rem] border border-white/5 shadow-2xl">
+                <div className="space-y-3 text-center md:text-left">
+                    <h2 className="text-5xl font-serif font-bold text-white flex items-center justify-center md:justify-start gap-4">
+                        <Sparkles className="text-amber-400" /> Tarot-Syntese
+                    </h2>
+                    <p className="text-indigo-300 text-xs uppercase tracking-[0.4em] font-black italic">Speilet av din underbevissthet</p>
                 </div>
-
-                {/* Configuration Bar */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12 bg-indigo-950/20 backdrop-blur-md p-6 rounded-2xl border border-white/5">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
-                            <FileText size={12} /> Spredning
-                        </label>
-                        <select 
-                            value={selectedSpread.id}
-                            onChange={(e) => setSelectedSpread(SPREADS.find(s => s.id === e.target.value) || SPREADS[0])}
-                            className="w-full bg-[#050511] border border-indigo-500/20 rounded-lg px-3 py-2.5 text-xs text-indigo-100 focus:outline-none focus:border-amber-500/50 transition-colors"
-                        >
-                            {SPREADS.map(spread => (
-                                <option key={spread.id} value={spread.id}>{spread.name}</option>
-                            ))}
-                        </select>
+                
+                <div onClick={() => setShowPayment(true)} className="flex items-center gap-6 bg-[#050511]/60 px-8 py-5 rounded-[2.5rem] border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer group">
+                    <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Dine Analyser</p>
+                        <p className="text-2xl font-serif text-amber-100">{credits}</p>
                     </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
-                            <Fingerprint size={12} /> Lesestil
-                        </label>
-                        <select 
-                            value={readingStyle.id}
-                            onChange={(e) => setReadingStyle(READING_STYLES.find(s => s.id === e.target.value) || READING_STYLES[0])}
-                            className="w-full bg-[#050511] border border-indigo-500/20 rounded-lg px-3 py-2.5 text-xs text-indigo-100 focus:outline-none focus:border-amber-500/50 transition-colors"
-                        >
-                            {READING_STYLES.map(style => (
-                                <option key={style.id} value={style.id}>{style.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
-                            <User size={12} /> Klient (Valgfri)
-                        </label>
-                        <select 
-                            value={selectedClient ? selectedClient.clientName : ''}
-                            onChange={(e) => {
-                                const client = savedClients.find(c => c.clientName === e.target.value);
-                                setSelectedClient(client || null);
-                            }}
-                            className="w-full bg-[#050511] border border-indigo-500/20 rounded-lg px-3 py-2.5 text-xs text-indigo-100 focus:outline-none focus:border-amber-500/50 transition-colors"
-                        >
-                            <option value="">Ingen (Generell)</option>
-                            {savedClients.map((c, i) => (
-                                <option key={i} value={c.clientName}>{c.clientName}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
-                            <MessageSquare size={12} /> Spørsmål
-                        </label>
-                        <input
-                            type="text"
-                            value={userContext}
-                            onChange={(e) => setUserContext(e.target.value)}
-                            placeholder="Hva vil du vite?"
-                            className="w-full bg-[#050511] border border-indigo-500/20 rounded-lg px-3 py-2.5 text-xs text-indigo-100 focus:outline-none focus:border-amber-500/50 placeholder:text-indigo-500/50"
-                        />
+                    <div className="p-4 bg-amber-500 rounded-2xl text-black shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
+                        <Wallet size={24} />
                     </div>
                 </div>
+            </header>
 
-                {/* Main Card Area */}
-                <div className="min-h-[500px] flex items-center justify-center">
-                    {cards.length === 0 && !isShuffling ? (
-                        <div className="text-center space-y-6 opacity-60 animate-pulse">
-                            <div className="w-24 h-24 mx-auto rounded-full border border-indigo-500/30 flex items-center justify-center">
-                                <CircleHelp size={40} className="text-indigo-300" />
+            {!report && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                    {/* Controls */}
+                    <div className="lg:col-span-4 space-y-6">
+                        <section className="bg-[#0f0f25]/60 border border-white/5 p-8 rounded-[3rem] space-y-8 shadow-xl">
+                            <div className="space-y-2">
+                                <label className="text-[10px] uppercase font-black text-indigo-400 tracking-widest ml-1">Velg Legg</label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {SPREADS.map(s => (
+                                        <button key={s.id} onClick={() => setSelectedSpread(s)} className={`p-4 rounded-2xl border text-left transition-all ${selectedSpread.id === s.id ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-black/20 border-white/5 text-slate-400 hover:bg-white/5'}`}>
+                                            <p className="text-sm font-bold">{s.name}</p>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <p className="font-serif text-xl text-indigo-200">Klar til å konsultere orakelet...</p>
-                        </div>
-                    ) : (
-                        <div className={`grid gap-8 w-full max-w-6xl mx-auto transition-all duration-700 ${getGridClass()}`}>
-                            {isShuffling && Array.from({length: selectedSpread.count}).map((_, i) => (
-                                 <div key={i} className="aspect-[2/3] bg-indigo-950/20 rounded-xl border border-indigo-500/20 flex items-center justify-center animate-pulse shadow-lg">
-                                     <div className="w-8 h-8 border-2 border-indigo-400/30 rotate-45"></div>
-                                 </div>
-                            ))}
                             
-                            {!isShuffling && cards.map((data, index) => (
-                                <div key={index} className="flex flex-col items-center w-full max-w-[240px] mx-auto group perspective-1000">
-                                    <div className="mb-4">
-                                        <span className="text-[10px] font-bold text-amber-200 uppercase tracking-[0.2em] bg-amber-900/20 px-3 py-1.5 rounded-full border border-amber-500/20 shadow-[0_0_15px_rgba(251,191,36,0.1)]">
-                                            {selectedSpread.positions[index] || `Posisjon ${index + 1}`}
-                                        </span>
-                                    </div>
-                                    
-                                    <div 
-                                        className="relative aspect-[2/3] w-full cursor-pointer hover:scale-[1.03] transition-transform duration-500 ease-out"
-                                        onClick={() => handleReveal(index)}
-                                    >
-                                        <div className={`relative w-full h-full transition-transform duration-700 transform-style-3d shadow-2xl rounded-xl ${revealed[index] ? 'rotate-y-180' : ''}`}>
-                                            
-                                            {/* Back of Card */}
-                                            <div className="absolute inset-0 backface-hidden">
-                                                <CardBack />
-                                            </div>
-
-                                            {/* Front of Card */}
-                                            <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-xl overflow-hidden border border-white/10 bg-[#0a0a16] shadow-[0_0_30px_rgba(0,0,0,0.5)]`}>
-                                                <div className={`w-full h-full transition-transform duration-500 ${data.isReversed ? 'rotate-180' : ''}`}>
-                                                    <img src={data.card.img} alt={data.card.name} className="w-full h-full object-cover" />
-                                                </div>
-                                                
-                                                {/* Card Label Overlay */}
-                                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent pt-12">
-                                                    <h3 className="text-lg font-serif font-bold text-amber-50 mb-1 leading-tight flex items-center gap-2">
-                                                        {data.card.name}
-                                                    </h3>
-                                                    {data.isReversed && (
-                                                        <span className="text-[9px] bg-red-900/60 border border-red-500/30 px-2 py-0.5 rounded text-red-200 uppercase tracking-widest font-bold">
-                                                            Reversert
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Quick Insight (Visible after reveal) */}
-                                    <div className={`mt-4 w-full text-center transition-all duration-1000 delay-300 ${revealed[index] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                        <p className="text-indigo-200/80 text-xs font-medium leading-relaxed italic border-t border-indigo-500/20 pt-2">
-                                            "{data.card.keywords[0]} & {data.card.keywords[1]}"
-                                        </p>
-                                    </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] uppercase font-black text-indigo-400 tracking-widest ml-1">Tolkningstil</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {STYLES.map(s => (
+                                        <button key={s.id} onClick={() => setSelectedStyle(s.id)} className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${selectedStyle === s.id ? 'bg-amber-500 border-amber-400 text-black shadow-lg' : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5'}`}>
+                                            <span className="text-[9px] font-black uppercase">{s.label}</span>
+                                        </button>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* IMMERSIVE REPORT OVERLAY */}
-            {(report || isGenerating) && revealed.every(Boolean) && cards.length > 0 && (
-                <div className="fixed inset-0 z-[100] bg-[#050511]/95 backdrop-blur-xl overflow-y-auto animate-in fade-in duration-500">
-                    <div className="max-w-3xl mx-auto p-6 md:p-12 pb-32">
-                        
-                        {/* Close Button */}
-                        <button 
-                            onClick={handleCloseReport}
-                            className="fixed top-6 right-6 p-3 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/5 group"
-                        >
-                            <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-                        </button>
-
-                        <div className="text-center space-y-6 mb-16 mt-8">
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-900/10 text-amber-200 text-[10px] tracking-[0.2em] uppercase font-bold shadow-[0_0_20px_rgba(251,191,36,0.1)]">
-                                <Sparkles size={12} />
-                                Astro Mason Intelligence
                             </div>
-                            <h1 className="text-4xl md:text-6xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-white to-indigo-200 leading-tight">
-                                {selectedSpread.name}
-                            </h1>
-                            <p className="text-indigo-300 text-sm font-light tracking-wide">
-                                En dybdeanalyse for {selectedClient ? selectedClient.clientName : 'Gjest'}
-                            </p>
-                        </div>
 
-                        {isGenerating ? (
-                            <div className="flex flex-col items-center justify-center space-y-8 py-20">
-                                <div className="relative">
-                                    <div className="w-24 h-24 border border-indigo-500/20 rounded-full"></div>
-                                    <div className="absolute inset-0 w-24 h-24 border-t-2 border-amber-400 rounded-full animate-spin"></div>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <Sparkles className="text-amber-200 animate-pulse" size={24} />
-                                    </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] uppercase font-black text-indigo-400 tracking-widest ml-1">Spørsmål eller Kontekst</label>
+                                <textarea value={userContext} onChange={e => setUserContext(e.target.value)} placeholder="Hva søker du innsikt i?" className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-sm focus:border-indigo-500 outline-none h-32 resize-none transition-all placeholder:opacity-20" />
+                            </div>
+
+                            <button onClick={handleDraw} disabled={isShuffling} className="w-full py-6 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl shadow-indigo-900/40 hover:scale-[1.02] transition-all disabled:opacity-30">
+                                {isShuffling ? 'Blander Arkivene...' : 'Trekk Kortene'}
+                            </button>
+                        </section>
+                    </div>
+
+                    {/* Cards Display */}
+                    <div className="lg:col-span-8 bg-white/[0.01] border-2 border-dashed border-white/5 rounded-[4rem] p-12 min-h-[600px] flex flex-col items-center justify-center">
+                        {cards.length === 0 ? (
+                            <div className="text-center space-y-6 opacity-30 group">
+                                <div className="w-32 h-32 mx-auto rounded-full border border-indigo-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Zap size={48} className="text-indigo-400" />
                                 </div>
-                                <div className="text-center space-y-2">
-                                    <p className="text-indigo-100 font-serif text-xl animate-pulse">Syntetiserer arketyper...</p>
-                                    <p className="text-indigo-400/60 text-xs uppercase tracking-[0.2em]">Kobler elementer og dignities</p>
-                                </div>
+                                <p className="font-serif italic text-2xl">Bland kortene for å starte en ny seanse...</p>
                             </div>
                         ) : (
-                            <div className="space-y-12 animate-slide-up">
-                                {/* Main Report Card */}
-                                <div className="relative p-8 md:p-12 rounded-3xl bg-[#0a0a16] border border-white/10 shadow-2xl overflow-hidden group">
-                                    {/* Shining Edge */}
-                                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-400/50 to-transparent opacity-50"></div>
-                                    <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] group-hover:bg-indigo-600/20 transition-colors duration-1000"></div>
-                                    
-                                    <div className="relative z-10 prose prose-invert prose-lg max-w-none 
-                                        prose-headings:font-serif prose-headings:text-amber-100 
-                                        prose-p:text-slate-300 prose-p:font-light prose-p:leading-8
-                                        prose-strong:text-white prose-strong:font-semibold
-                                        prose-li:text-slate-300">
-                                        <div className="whitespace-pre-wrap">
-                                            {report}
+                            <div className="w-full space-y-12">
+                                <div className={`grid gap-6 justify-center ${cards.length > 5 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-1 md:grid-cols-3'}`}>
+                                    {cards.map((c, i) => (
+                                        <div key={i} className="space-y-3 text-center">
+                                            <p className="text-[8px] font-black uppercase tracking-widest text-amber-500/60">{selectedSpread.positions[i]}</p>
+                                            <div onClick={() => revealCard(i)} className="relative aspect-[2/3] w-full max-w-[160px] mx-auto perspective-1000 cursor-pointer">
+                                                <div className={`relative w-full h-full transition-transform duration-700 transform-style-3d ${revealed[i] ? 'rotate-y-180' : ''}`}>
+                                                    <div className="absolute inset-0 backface-hidden"><CardBack /></div>
+                                                    <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl overflow-hidden border border-amber-500/20 bg-[#0a0a16] shadow-2xl">
+                                                        <img src={c.card.img} alt={c.card.name} className={`w-full h-full object-cover ${c.isReversed ? 'rotate-180' : ''}`} />
+                                                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent">
+                                                            <p className="text-[10px] font-serif text-white leading-tight">{c.card.name}</p>
+                                                            {c.isReversed && <span className="text-[8px] text-red-400 font-black uppercase">Reversert</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
+                                    ))}
+                                </div>
+                                {revealed.every(v => v) && (
+                                    <div className="flex justify-center animate-fade-in">
+                                        <button onClick={requestAnalysis} className="px-12 py-5 bg-amber-500 text-black font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl shadow-amber-500/20 hover:scale-[1.05] transition-all flex items-center gap-3">
+                                            <Scroll size={20} /> Utfør Dyp Analyse (1 Kreditt)
+                                        </button>
                                     </div>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <button 
-                                        className="p-5 rounded-2xl bg-[#0f0f25] border border-white/5 hover:border-amber-500/30 hover:bg-[#151530] transition-all text-left group flex items-center gap-4"
-                                    >
-                                        <div className="p-3 bg-indigo-900/30 rounded-xl text-amber-200 group-hover:scale-110 transition-transform">
-                                            <Save size={20} />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-serif text-white text-lg group-hover:text-amber-100 transition-colors">Lagre i Journal</h3>
-                                            <p className="text-xs text-slate-500">Bevar innsikten for ettertiden.</p>
-                                        </div>
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={handleCloseReport}
-                                        className="p-5 rounded-2xl bg-[#0f0f25] border border-white/5 hover:border-indigo-500/30 hover:bg-[#151530] transition-all text-left group flex items-center gap-4"
-                                    >
-                                        <div className="p-3 bg-indigo-900/30 rounded-xl text-indigo-200 group-hover:scale-110 transition-transform">
-                                            <RotateCcw size={20} />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-serif text-white text-lg group-hover:text-indigo-100 transition-colors">Ny Lesning</h3>
-                                            <p className="text-xs text-slate-500">Start på nytt med blanke ark.</p>
-                                        </div>
-                                    </button>
-                                </div>
+                                )}
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* AI Report View */}
+            {report && (
+                <div className="animate-slide-up space-y-12">
+                    <div className="bg-[#0a0a1a] p-12 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
+                        <div className="absolute -top-24 -left-24 w-96 h-96 bg-amber-500/5 rounded-full blur-[100px]"></div>
+                        <header className="text-center space-y-4 mb-16 relative z-10">
+                            <h1 className="text-6xl md:text-8xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">Sjelens Speil</h1>
+                            <p className="text-xl italic text-slate-400 font-light border-l-2 border-amber-500/30 pl-6 inline-block">Analyse utført av AstroMason • {new Date().toLocaleDateString('no-NO')}</p>
+                        </header>
+                        <article className="prose prose-invert prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left relative z-10">
+                            {report}
+                        </article>
+                        
+                        <div className="mt-20 flex flex-wrap justify-center gap-6 relative z-10">
+                            <button onClick={saveToArchive} className={`px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 transition-all ${isSaved ? 'bg-green-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl'}`}>
+                                <Save size={18} /> {isSaved ? 'Arkivert i Sjelssenteret' : 'Lagre i mitt Arkiv'}
+                            </button>
+                            <button onClick={downloadReport} className="px-10 py-5 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-white/10 transition-all">
+                                <Download size={18} /> Last ned som tekstfil
+                            </button>
+                            <button onClick={() => {setReport(''); setCards([]);}} className="px-10 py-5 bg-red-950/20 text-red-400 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-red-900/20 transition-all">
+                                <X size={18} /> Start ny seanse
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Modal */}
+            {showPayment && (
+                <div className="fixed inset-0 z-[250] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
+                   <div className="bg-[#0a0a16] border border-white/10 w-full max-w-xl rounded-[4rem] p-12 text-center space-y-10 relative shadow-2xl overflow-hidden animate-flip-in">
+                      <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl"></div>
+                      <button onClick={() => setShowPayment(false)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+                      <header className="space-y-3">
+                         <div className="w-16 h-16 bg-amber-500/10 rounded-3xl flex items-center justify-center text-amber-500 mx-auto border border-amber-500/20 mb-4">
+                            <CreditCard size={32} />
+                         </div>
+                         <h2 className="text-3xl font-serif font-bold text-white">Lås opp Orakelsvarene</h2>
+                         <p className="text-sm text-slate-400 max-w-xs mx-auto">AstroMason krever et bidrag for å kanalisere de dypere energiene for deg.</p>
+                      </header>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div onClick={() => buyCredits(1)} className="bg-white/5 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 transition-all cursor-pointer group text-center">
+                            <p className="text-[10px] uppercase font-black text-indigo-400 tracking-widest mb-4">Enkel Innsikt</p>
+                            <div className="text-5xl font-serif text-white mb-2">€4</div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-6">1 Dyp Analyse</p>
+                            <div className="py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest group-hover:bg-amber-400 transition-colors">Velg Enkel</div>
+                         </div>
+                         <div onClick={() => buyCredits(10)} className="bg-indigo-500/5 border border-amber-500/30 p-8 rounded-[2.5rem] hover:scale-[1.03] transition-all cursor-pointer group relative overflow-hidden text-center">
+                            <div className="absolute top-0 right-0 p-3 bg-amber-500 text-black text-[9px] font-black uppercase rounded-bl-xl">Best Verdi</div>
+                            <p className="text-[10px] uppercase font-black text-amber-400 tracking-widest mb-4">Sjelepakke</p>
+                            <div className="text-5xl font-serif text-white mb-2">€25</div>
+                            <p className="text-[10px] text-slate-300 font-bold mb-6">10 Dype Analyser</p>
+                            <div className="py-3 bg-amber-500 text-black rounded-xl text-[10px] font-black uppercase tracking-widest group-hover:bg-amber-400 transition-colors">Velg Mester</div>
+                         </div>
+                      </div>
+                      <div className="flex items-center justify-center gap-6 text-[10px] text-slate-600 font-bold uppercase tracking-widest pt-4">
+                         <span className="flex items-center gap-1"><Shield size={12} /> Sikker Betaling</span>
+                         <span className="flex items-center gap-1"><CheckCircle size={12} /> Umiddelbar Tilgang</span>
+                      </div>
+                   </div>
+                </div>
+            )}
+
+            {isGenerating && (
+                <div className="fixed inset-0 z-[300] bg-[#050511]/95 backdrop-blur-3xl flex flex-col items-center justify-center space-y-10">
+                    <div className="relative">
+                        <Loader2 className="animate-spin text-amber-500 opacity-20" size={160} />
+                        <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-amber-400 animate-pulse" size={64} />
+                    </div>
+                    <div className="text-center space-y-2">
+                        <h2 className="text-amber-100 font-serif text-4xl">AstroMason dechiffrerer mønsteret...</h2>
+                        <p className="text-slate-500 text-xs uppercase tracking-[0.5em] font-black">Arkivene åpnes for din sjel</p>
                     </div>
                 </div>
             )}

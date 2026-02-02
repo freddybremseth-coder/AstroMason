@@ -1,6 +1,6 @@
 
 import React, { useState, useContext } from 'react';
-import { User, Settings as SettingsIcon, Bell, Shield, Save, Download, ExternalLink, Key, Moon, Sun, Monitor } from './icons';
+import { User, Settings as SettingsIcon, Bell, Shield, Save, Download, ExternalLink, Key, Moon, Sun, Monitor } from './Icons';
 import { ThemeContext } from '../App';
 
 interface SettingsProps {

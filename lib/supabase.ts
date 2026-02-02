@@ -1,13 +1,19 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// Placeholder credentials to prevent crash on demo
+// MERK: Disse bør ideelt sett ligge i en .env fil. 
+// For demo-formål bruker vi syntaktisk gyldige URL-er slik at appen ikke krasjer ved oppstart.
+// Erstatt disse med dine faktiske nøkler når du kobler til Supabase.
+
 const SUPABASE_URL = 'https://placeholder-project.supabase.co';
 const SUPABASE_ANON_KEY = 'placeholder-key';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Hjelpefunksjon for å sjekke om vi er koblet til
 export const checkConnection = async () => {
   try {
+    // Hvis vi bruker placeholder-url, hopp over nettverkskall
     if (SUPABASE_URL.includes('placeholder')) {
         throw new Error('Using placeholder credentials');
     }
