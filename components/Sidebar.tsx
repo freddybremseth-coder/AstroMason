@@ -1,6 +1,6 @@
 
 import React, { useContext } from 'react';
-import { LayoutDashboard, Sun, Globe, ExternalLink, LogOut, Sparkles, Fingerprint, UserCircle, Calendar, Star, Shield, Settings as SettingsIcon, Zap } from './Icons';
+import { LayoutDashboard, Sun, Globe, ExternalLink, LogOut, Sparkles, Fingerprint, UserCircle, Calendar, Star, Shield, Settings as SettingsIcon, Zap, X } from './Icons';
 import { NavItem, Language } from '../types';
 import { UI_TRANSLATIONS } from '../constants';
 import { LangContext } from '../App';
@@ -44,6 +44,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     navItems.push({ id: 'crm', label: 'Admin CRM', icon: Shield });
   }
 
+  const handleNavClick = (id: string) => {
+    setView(id);
+    setIsMobileOpen(false); 
+  };
+
   const languages: {code: Language, label: string, flag: string}[] = [
     { code: 'no', label: 'Norsk', flag: '🇳🇴' },
     { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -56,25 +61,33 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {isMobileOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsMobileOpen(false)} />
+        <div 
+          className="fixed inset-0 bg-black/60 z-[60] lg:hidden backdrop-blur-sm transition-opacity duration-300" 
+          onClick={() => setIsMobileOpen(false)} 
+        />
       )}
 
-      <aside className={`fixed top-0 left-0 z-50 h-screen w-64 bg-[#0a0a16] border-r border-white/5 transition-all duration-300 ease-in-out flex flex-col lg:translate-x-0 lg:static ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="p-8 border-b border-white/5">
-            <div className="flex items-center gap-4">
-               <Logo size={42} />
-               <h1 className="font-serif text-lg font-bold text-white tracking-widest leading-tight">Astro<br/>Mason</h1>
-            </div>
+      <aside className={`fixed top-0 left-0 z-[70] h-screen w-72 bg-[#0a0a16] border-r border-white/5 transition-transform duration-500 ease-out flex flex-col lg:translate-x-0 lg:static ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="p-10 border-b border-white/5 flex flex-col items-center relative">
+            <button 
+              onClick={() => setIsMobileOpen(false)}
+              className="lg:hidden absolute top-4 right-4 p-2 text-slate-500 hover:text-white"
+            >
+              <X size={24} />
+            </button>
+            <Logo size={80} showText={true} />
           </div>
 
-          <nav className="flex-1 py-8 space-y-2 px-4 overflow-y-auto">
+          <nav className="flex-1 py-8 space-y-1 px-4 overflow-y-auto custom-scrollbar">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
               return (
-                <button key={item.id} onClick={() => { setView(item.id); setIsMobileOpen(false); }}
-                  className={`w-full flex items-center gap-4 px-5 py-4 text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all ${isActive ? 'bg-amber-500 text-black shadow-xl shadow-amber-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}>
-                  <Icon size={18} />
+                <button 
+                  key={item.id} 
+                  onClick={() => handleNavClick(item.id)}
+                  className={`w-full flex items-center gap-4 px-5 py-3.5 text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all ${isActive ? 'bg-amber-500 text-black shadow-xl shadow-amber-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}>
+                  <Icon size={16} />
                   {item.label}
                 </button>
               );

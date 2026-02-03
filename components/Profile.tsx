@@ -40,9 +40,6 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
-  const [apiKeys, setApiKeys] = useState({
-    gemini: localStorage.getItem('gemini_api_key') || ''
-  });
 
   useEffect(() => {
     const saved = localStorage.getItem('astromason_reports');
@@ -121,10 +118,9 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
         </button>
     </div>
   );
-  /* ... remaining code ... */
+
   return (
     <div className="max-w-7xl mx-auto py-12 px-6 animate-fade-in space-y-12">
-      {/* ... profile form and reports list code ... */}
       <header className="flex flex-col md:flex-row md:items-center gap-6">
         <div className="w-24 h-24 rounded-[2.5rem] bg-gradient-to-br from-amber-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-serif font-bold shadow-2xl relative">
           {soulData.name.charAt(0) || "S"}

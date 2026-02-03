@@ -4,6 +4,7 @@ import { Star, Sparkles, CircleCheck, Shield, X, Lock, ChevronRight, Sun, Finger
 import { LangContext } from '../App';
 import { Language } from '../types';
 import { UI_TRANSLATIONS } from '../constants';
+import Logo from './Logo';
 
 interface LandingPageProps {
   onLogin: (userData: { email: string; isAdmin: boolean }) => void;
@@ -27,15 +28,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Lagre e-post for å identifisere brukeren i appen
-    localStorage.setItem('soul_email', email);
-
-    // Lagre navn hvis brukeren registrerer seg, slik at det er forhåndsutfylt i appen
-    if (authMode === 'register' && name) {
-        localStorage.setItem('soul_name', name);
-    }
-
-    // Superadmin sjekk
     if (authMode === 'login' && email === 'freddy.bremseth@gmail.com' && password === 'AllAstro1!') {
         setTimeout(() => {
             onLogin({ email, isAdmin: true });
@@ -51,8 +43,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         return;
     }
 
-    // Simulert vanlig innlogging/registrering
     setTimeout(() => {
+        localStorage.setItem('soul_email', email);
+        if (authMode === 'register' && name) {
+            localStorage.setItem('soul_name', name);
+        }
         onLogin({ email, isAdmin: false });
         setIsProcessing(false);
     }, 1000);
@@ -73,8 +68,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       <nav className="fixed top-0 w-full z-50 bg-[#050511]/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="https://i.imgur.com/M7z6g3A.jpeg" alt="Logo" className="w-10 h-10 rounded-full border border-amber-500/30" />
-            <span className="text-xl font-serif font-bold text-white tracking-widest">Astro Mason</span>
+            <Logo size={40} showText={true} />
           </div>
           <div className="flex items-center gap-6">
             <div className="relative">
@@ -97,8 +91,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </nav>
 
-      <header className="relative pt-48 pb-32 overflow-hidden text-center px-6">
+      <header className="relative pt-56 pb-32 overflow-hidden text-center px-6">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none opacity-50"></div>
+        <div className="mb-12">
+            <Logo size={140} showText={true} />
+        </div>
         <h1 className="text-7xl md:text-9xl font-serif font-bold text-white mb-8 tracking-tighter leading-none">
           {t.heroTitle} <br/>
           <span className="text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-amber-600 italic">{t.heroSubtitle}</span>

@@ -8,7 +8,9 @@ const AiAssistant: React.FC = () => {
   
   const [credits, setCredits] = useState<number>(() => {
     const saved = localStorage.getItem('tarot_credits');
-    return saved !== null ? parseInt(saved) : (userEmail === 'freddy.bremseth@gmail.com' ? 200000 : 0);
+    if (saved !== null) return parseInt(saved);
+    // Kun kreditt for Freddy
+    return userEmail === 'freddy.bremse@gmail.com' ? 200000 : 0;
   });
 
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
@@ -19,8 +21,12 @@ const AiAssistant: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Kun kreditt for Freddy
+    if (userEmail === 'freddy.bremse@gmail.com' && credits <= 100000) {
+        setCredits(prev => prev + 100000);
+    }
     localStorage.setItem('tarot_credits', credits.toString());
-  }, [credits]);
+  }, [credits, userEmail]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -42,10 +48,7 @@ const AiAssistant: React.FC = () => {
     setLoading(true);
 
     try {
-        // Trekk 1 kreditt
         setCredits(prev => prev - 1);
-
-        // Simulere dyp respons
         await new Promise(resolve => setTimeout(resolve, 2000));
         const response = "Dine stjerner indikerer en kraftig transformasjon i ditt 4. hus akkurat nå. Pluto beveger seg sakte gjennom Steinbukken, noe som krever at du ser på dine røtter med nye øyne. Dette er en tid for å gi slipp på gamle strukturer for å gi plass til en mer autentisk grunnmur.";
         
@@ -81,7 +84,7 @@ const AiAssistant: React.FC = () => {
             </div>
             <div className="text-right pr-2">
                 <p className="text-[8px] uppercase font-black text-slate-500">Kreditter</p>
-                <p className="text-sm font-serif text-amber-600">{credits}</p>
+                <p className="text-sm font-serif text-amber-600">{credits.toLocaleString()}</p>
             </div>
           </div>
 

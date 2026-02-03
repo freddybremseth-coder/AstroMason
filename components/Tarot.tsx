@@ -39,8 +39,8 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
     const [credits, setCredits] = useState<number>(() => {
         const saved = localStorage.getItem('tarot_credits');
         if (saved !== null) return parseInt(saved);
-        if (userEmail === 'freddy.bremseth@gmail.com') return 200000;
-        return 0;
+        // Kun kreditt for Freddy
+        return userEmail === 'freddy.bremse@gmail.com' ? 200000 : 0;
     });
 
     const [selectedSpread, setSelectedSpread] = useState(SPREADS[1]);
@@ -54,7 +54,8 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
     const [isSaved, setIsSaved] = useState(false);
 
     useEffect(() => {
-        if (userEmail === 'freddy.bremseth@gmail.com' && credits <= 100000) {
+        // Kun kreditt for Freddy
+        if (userEmail === 'freddy.bremse@gmail.com' && credits <= 100000) {
             setCredits(prev => prev + 100000);
         }
         localStorage.setItem('tarot_credits', credits.toString());

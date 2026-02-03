@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, createContext, useRef } from 'react';
-import { Sparkles, Sun, Loader2, X, ChevronRight, Download, Save, Scroll, RefreshCw, Fingerprint, Heart, Zap, Compass, Star, Printer, Lock, Shield, CheckCircle, Info, Users, User, LayoutDashboard, History, UserCircle, Activity, MapPin, Calendar, Globe, Clock as ClockIcon, Settings as SettingsIcon } from './components/Icons';
+import { Sparkles, Sun, Loader2, X, ChevronRight, Download, Save, Scroll, RefreshCw, Fingerprint, Heart, Zap, Compass, Star, Printer, Lock, Shield, CheckCircle, Info, Users, User, LayoutDashboard, History, UserCircle, Activity, MapPin, Calendar, Globe, Clock as ClockIcon, Settings as SettingsIcon, Menu } from './components/Icons';
 import Tarot from './components/Tarot';
 import Numerology from './components/Numerology';
 import ChartWheel from './components/ChartWheel';
@@ -13,6 +13,7 @@ import LandingPage from './components/LandingPage';
 import AdminCRM from './components/AdminCRM';
 import Settings from './components/Settings';
 import Tools from './components/Tools';
+import Logo from './components/Logo';
 import { AstrologyService } from './services/astrology';
 import { CalculatedChart, Language, PlanetPosition, AstrologyMode } from './types';
 import { UI_TRANSLATIONS } from './constants';
@@ -25,6 +26,8 @@ export default function AstroMasonApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const [natalChart, setNatalChart] = useState<CalculatedChart | null>(null);
   const [activeChart, setActiveChart] = useState<CalculatedChart | null>(null);
   
@@ -41,21 +44,25 @@ export default function AstroMasonApp() {
   
   const [transitAge, setTransitAge] = useState(0);
   const [transitDate, setTransitDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isCalculatingTransit, setIsCalculatingTransit] = useState(false);
 
   const t = UI_TRANSLATIONS[lang];
 
   const handleLogin = (userData: { email: string; isAdmin: boolean }) => {
     setIsAuthenticated(true);
     setIsAdmin(userData.isAdmin);
+    localStorage.setItem('soul_email', userData.email.toLowerCase());
     
     const hasName = localStorage.getItem('soul_name');
     const hasDate = localStorage.getItem('soul_date');
     const isProfileComplete = hasName && hasDate;
 
-    if (userData.isAdmin) setActiveTab('crm');
-    else if (!isProfileComplete) setActiveTab('profile');
-    else setActiveTab('dashboard');
+    if (userData.isAdmin) {
+      setActiveTab('crm');
+    } else if (!isProfileComplete) {
+      setActiveTab('profile');
+    } else {
+      setActiveTab('dashboard');
+    }
   };
 
   const refreshNatalData = async (silent = false) => {
@@ -73,21 +80,13 @@ export default function AstroMasonApp() {
         if (birthData.name && birthData.date) {
             const chart = await AstrologyService.calculateChart(birthData, astrologyMode);
             setNatalChart(chart);
-            if (subMode === 'natal') {
-                setActiveChart(chart);
-            }
+            if (subMode === 'natal') setActiveChart(chart);
             
             const birthDate = new Date(birthData.date);
             const current = new Date();
             const age = current.getFullYear() - birthDate.getFullYear();
             setTransitAge(Math.max(0, age));
-        } else {
-            setNatalChart(null);
-            setActiveChart(null);
         }
-      } else {
-        setNatalChart(null);
-        setActiveChart(null);
       }
     } catch (e) {
       console.error("Klarte ikke å laste kartdata", e);
@@ -100,12 +99,12 @@ export default function AstroMasonApp() {
   useEffect(() => { refreshNatalData(true); }, [astrologyMode]);
 
   const generateReport = async (type: string) => {
-    // Sjekk kreditter (5 kreditter for full Livsbok)
-    const userEmail = localStorage.getItem('soul_email') || '';
-    const currentCredits = parseInt(localStorage.getItem('tarot_credits') || '0');
-    
-    if (currentCredits < 5) {
-        if (confirm("En komplett Livsbok koster 5 kreditter. Vil du gå til innstillinger for å fylle på?")) {
+    const sub = localStorage.getItem('soul_subscription');
+    const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
+    const cost = 5;
+
+    if (sub !== 'Master' && credits < cost) {
+        if (confirm(`En komplett Livsbok koster ${cost} kreditter. Vil du fylle på i innstillinger?`)) {
             setActiveTab('settings');
         }
         return;
@@ -123,8 +122,9 @@ export default function AstroMasonApp() {
         natalChart || undefined
       );
       
-      // Trekk kreditter
-      localStorage.setItem('tarot_credits', (currentCredits - 5).toString());
+      if (sub !== 'Master') {
+        localStorage.setItem('tarot_credits', (credits - cost).toString());
+      }
       
       setReportData(data);
       setShowReport(true);
@@ -145,7 +145,24 @@ export default function AstroMasonApp() {
   return (
     <LangContext.Provider value={{ lang, setLang }}>
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      <div className={`min-h-screen flex ${theme === 'dark' ? 'bg-[#050511] text-white' : 'bg-slate-50 text-slate-900'} selection:bg-indigo-500/30 font-sans`}>
+      <div className={`min-h-screen flex flex-col lg:flex-row ${theme === 'dark' ? 'bg-[#050511] text-white' : 'bg-slate-50 text-slate-900'} selection:bg-indigo-500/30 font-sans`}>
+        
+        {/* Mobile Top Bar */}
+        <header className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-[#0a0a16]/90 backdrop-blur-lg border-b border-white/5 z-40 flex items-center justify-between px-6 py-2">
+          <div className="flex-1"></div>
+          <div className="flex-1 flex justify-center">
+             <Logo size={40} showText={true} />
+          </div>
+          <div className="flex-1 flex justify-end">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 text-slate-400 hover:text-white"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+        </header>
+
         <Sidebar 
           currentView={activeTab} 
           setView={(v) => { 
@@ -154,13 +171,17 @@ export default function AstroMasonApp() {
             setActiveTab(v); 
             if(v === 'astrology') refreshNatalData(); 
           }} 
-          isMobileOpen={false} 
-          setIsMobileOpen={() => {}} 
-          onLogout={() => { setIsAuthenticated(false); setIsAdmin(false); }}
+          isMobileOpen={isMobileMenuOpen} 
+          setIsMobileOpen={setIsMobileMenuOpen} 
+          onLogout={() => { 
+            localStorage.clear(); 
+            setIsAuthenticated(false); 
+            setIsAdmin(false); 
+          }}
           isAdmin={isAdmin}
         />
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-12">
+        <main className="flex-1 overflow-y-auto p-6 md:p-12 mt-20 lg:mt-0">
           {isInitialLoading || isVerifying ? (
             <div className="flex flex-col items-center justify-center h-[80vh] space-y-8 animate-fade-in">
                <div className="relative">
@@ -173,7 +194,7 @@ export default function AstroMasonApp() {
                </div>
             </div>
           ) : (
-            <>
+            <div className="max-w-7xl mx-auto">
               {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
               {activeTab === 'horoscope' && <Horoscope natalChart={natalChart} />}
               {activeTab === 'chinese' && <ChineseAstrology />}
@@ -183,10 +204,10 @@ export default function AstroMasonApp() {
               {activeTab === 'crm' && isAdmin && <AdminCRM />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'astrology' && natalChart && !showReport && (
-                <div className="max-w-7xl mx-auto space-y-12">
+                <div className="space-y-12">
                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                       <div className="lg:col-span-7">
-                         <div className="bg-white/5 p-12 rounded-[4rem] border border-white/10 chart-to-print shadow-2xl">
+                         <div className="bg-white/5 p-6 md:p-12 rounded-[2.5rem] md:rounded-[4rem] border border-white/10 chart-to-print shadow-2xl">
                             {activeChart && (
                                 <ChartWheel positions={activeChart.positions} ascendantDegree={activeChart.ascendantDegree} houses={activeChart.houseCusps} aspects={activeChart.aspects} onPlanetClick={setSelectedPlanet} />
                             )}
@@ -210,7 +231,6 @@ export default function AstroMasonApp() {
                    </div>
                 </div>
               )}
-              {/* ... Resten av logikken for rapporter og identitet mangler ... */}
               {activeTab === 'astrology' && !natalChart && (
                 <div className="max-w-xl mx-auto py-12 animate-fade-in no-print text-center">
                    <div className="bg-[#0f0f25]/80 p-12 rounded-[4rem] border border-white/5 space-y-10 backdrop-blur-md">
@@ -227,19 +247,19 @@ export default function AstroMasonApp() {
               )}
               {activeTab === 'astrology' && showReport && reportData && (
                 <div className="max-w-4xl mx-auto py-12 animate-fade-in space-y-12 pb-32">
-                  <div className="bg-[#0a0a1a] p-12 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
+                  <div className="bg-[#0a0a1a] p-6 md:p-20 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
                     <button onClick={() => setShowReport(false)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
                       <X size={20} />
                     </button>
                     <header className="text-center space-y-4 mb-16">
-                      <h1 className="text-5xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
+                      <h1 className="text-4xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
                         {reportData.title}
                       </h1>
-                      <p className="text-sm uppercase tracking-widest text-slate-500 font-black">
+                      <p className="text-xs md:text-sm uppercase tracking-widest text-slate-500 font-black">
                         {new Date().toLocaleDateString()} • {subMode.toUpperCase()}
                       </p>
                     </header>
-                    <article className="prose prose-invert prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
+                    <article className="prose prose-invert prose-lg md:prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
                       <div className="first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left mb-12">
                         {reportData.essenceSummary}
                       </div>
@@ -249,16 +269,15 @@ export default function AstroMasonApp() {
                           <div className="text-slate-400 font-light">{chapter.content}</div>
                         </div>
                       ))}
-                      <div className="mt-12 pt-12 border-t border-white/5 italic text-amber-500/80 text-center text-3xl font-serif">
+                      <div className="mt-12 pt-12 border-t border-white/5 italic text-amber-500/80 text-center text-2xl md:text-3xl font-serif">
                         {reportData.mantra}
                       </div>
                     </article>
                   </div>
                 </div>
               )}
-              {/* Vise verktøy tab */}
               {activeTab === 'tools' && <Tools onNavigateToSettings={() => setActiveTab('settings')} />}
-            </>
+            </div>
           )}
         </main>
       </div>

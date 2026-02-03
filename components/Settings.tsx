@@ -14,30 +14,40 @@ interface SavedReport {
 const Settings: React.FC = () => {
   const { theme, setTheme } = useContext(ThemeContext);
   const { lang } = useContext(LangContext);
-  const userEmail = localStorage.getItem('soul_email') || '';
+  const userEmail = (localStorage.getItem('soul_email') || '').toLowerCase();
   const userName = localStorage.getItem('soul_name') || 'Søkende Sjel';
   
+  const [subscription, setSubscription] = useState<'None' | 'Single' | 'Master'>(() => {
+    return (localStorage.getItem('soul_subscription') as any) || 'None';
+  });
+
   const [credits, setCredits] = useState<number>(() => {
     const saved = localStorage.getItem('tarot_credits');
-    return saved !== null ? parseInt(saved) : (userEmail === 'freddy.bremseth@gmail.com' ? 200000 : 0);
+    if (saved !== null) return parseInt(saved);
+    return userEmail === 'freddy.bremseth@gmail.com' ? 200000 : 0;
   });
 
   const [isPaying, setIsPaying] = useState(false);
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
-  // Sjekk om vi kommer tilbake fra en vellykket Stripe-betaling
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const success = urlParams.get('success');
+    const type = urlParams.get('type');
     const amount = urlParams.get('amount');
 
-    if (success === 'true' && amount) {
-        const creditToAdd = parseInt(amount);
-        setCredits(prev => prev + creditToAdd);
-        // Fjern parametrene fra URL-en så vi ikke legger til kreditter flere ganger ved refresh
+    if (success === 'true') {
+        if (type === 'master') {
+            setSubscription('Master');
+            localStorage.setItem('soul_subscription', 'Master');
+            alert("Velsignet være din reise. Du har nå full tilgang til alle arkiver som Master-medlem.");
+        } else if (amount) {
+            const creditToAdd = parseInt(amount);
+            setCredits(prev => prev + creditToAdd);
+            alert(`Takk for din sjelelige investering! ${creditToAdd} kreditter er lagt til din profil.`);
+        }
         window.history.replaceState({}, document.title, "/settings");
-        alert(`Takk for din sjelelige investering! ${creditToAdd} kreditter er lagt til din profil.`);
     }
   }, []);
 
@@ -51,34 +61,32 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (userEmail === 'freddy.bremseth@gmail.com' && credits <= 100000) {
         setCredits(prev => prev + 100000);
+        setSubscription('Master');
+        localStorage.setItem('soul_subscription', 'Master');
     }
     localStorage.setItem('tarot_credits', credits.toString());
   }, [credits, userEmail]);
 
-  const buyCredits = async (amount: number, priceId: string) => {
+  const buyProduct = async (type: 'credits' | 'master', amount: number, priceId: string) => {
     setIsPaying(true);
-    
     try {
-        // I produksjon kaller vi nå vår nye Vercel API-funksjon
         const response = await fetch('/api/create-checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ priceId, email: userEmail, amount })
+            body: JSON.stringify({ 
+                priceId, 
+                email: userEmail, 
+                amount,
+                type // Sender med type for å håndtere suksess-URL korrekt
+            })
         });
 
         if (!response.ok) throw new Error("Betalingsforespørsel feilet.");
-
         const session = await response.json();
-        
-        // Videreformidler brukeren til Stripe Checkout
-        if (session.url) {
-            window.location.href = session.url;
-        } else {
-            throw new Error("Ingen betalings-URL mottatt.");
-        }
+        if (session.url) window.location.href = session.url;
     } catch (error) {
         console.error(error);
-        alert("Kunne ikke kontakte betalingsportalen. Husk å sette opp STRIPE_SECRET_KEY i Vercel.");
+        alert("Betalingsportalen er utilgjengelig i demo-modus. I produksjon ville du nå blitt sendt til Stripe.");
         setIsPaying(false);
     }
   };
@@ -109,11 +117,6 @@ const Settings: React.FC = () => {
             <button onClick={() => setSelectedReport(null)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
                 <X size={20} />
             </button>
-            <div className="absolute top-8 right-8 flex gap-3 no-print">
-                <button onClick={() => window.print()} className="p-3 bg-amber-500/10 rounded-full hover:bg-amber-500/20 transition-all text-amber-500 flex items-center gap-2 px-6">
-                    <Printer size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">PDF / Utskrift</span>
-                </button>
-            </div>
             <header className="text-center space-y-4 mb-16">
                 <h1 className="text-5xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
                     {selectedReport.report?.title || selectedReport.meta.title}
@@ -149,7 +152,7 @@ const Settings: React.FC = () => {
                     </div>
                     <div>
                         <h3 className="text-xl font-serif text-white">{userName}</h3>
-                        <p className="text-xs text-slate-500">{userEmail}</p>
+                        <p className="text-xs text-slate-500">{subscription === 'Master' ? 'Master Medlem' : 'Søkende Sjel'}</p>
                     </div>
                 </div>
                 
@@ -157,59 +160,46 @@ const Settings: React.FC = () => {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 text-amber-500">
                             <Wallet size={20} />
-                            <span className="text-sm font-black uppercase tracking-widest">Kreditt-balanse</span>
+                            <span className="text-sm font-black uppercase tracking-widest">Saldo</span>
                         </div>
-                        <span className="text-2xl font-serif text-amber-100">{credits.toLocaleString()}</span>
+                        <span className="text-2xl font-serif text-amber-100">{subscription === 'Master' ? 'Ubegrenset' : `${credits.toLocaleString()} Kreditter`}</span>
                     </div>
                 </div>
             </section>
 
             <section className="bg-[#0a0a16] border border-amber-500/20 p-10 rounded-[3.5rem] shadow-2xl space-y-8">
-                <h3 className="font-serif text-xl text-white">Kjøp Kreditter</h3>
+                <h3 className="font-serif text-xl text-white">Fyll på Arkivet</h3>
                 {isPaying ? (
                     <div className="py-12 text-center space-y-4">
                         <Loader2 size={32} className="animate-spin text-amber-500 mx-auto" />
-                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Kontakter Stripe...</p>
+                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Kontakter portalen...</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
+                        <button onClick={() => buyProduct('master', 1, 'price_master_year')} className={`w-full p-6 rounded-2xl border transition-all flex items-center justify-between group bg-amber-500 text-black border-amber-400 shadow-xl shadow-amber-500/10`}>
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase">Master-medlemskap</p>
+                                <p className="text-[9px] opacity-70 italic">Ubegrenset tilgang i 1 år</p>
+                            </div>
+                            <span className="text-xl font-serif">€49</span>
+                        </button>
+
+                        <div className="h-[1px] bg-white/5 my-4"></div>
+
                         {[
-                            { id: 'price_1', amount: 1, price: '€2', label: '1 Reise', priceId: 'price_1QqG9M...' }, // Erstatt med ekte Stripe Price IDs
-                            { id: 'price_5', amount: 5, price: '€5', label: '5 Reiser (Populær)', best: true, priceId: 'price_1QqG9N...' },
-                            { id: 'price_20', amount: 20, price: '€10', label: '20 Reiser (Verdi)', priceId: 'price_1QqG9P...' },
-                            { id: 'price_200', amount: 200, price: '€50', label: 'Mester-pakke', priceId: 'price_1QqG9R...' }
+                            { id: 'p1', amount: 5, price: '€14', label: 'Enkeltreise', desc: '5 kreditter (1 Livsbok)', priceId: 'p1' },
+                            { id: 'p2', amount: 20, price: '€29', label: 'Vandrer-pakke', desc: '20 kreditter', priceId: 'p2' }
                         ].map(pkg => (
-                            <button key={pkg.id} onClick={() => buyCredits(pkg.amount, pkg.priceId)} className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between group ${pkg.best ? 'bg-amber-500/10 border-amber-500/50' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
+                            <button key={pkg.id} onClick={() => buyProduct('credits', pkg.amount, pkg.priceId)} className="w-full p-4 rounded-2xl border border-white/5 bg-white/5 text-white hover:border-white/20 transition-all flex items-center justify-between group">
                                 <div className="text-left">
-                                    <p className="text-[10px] font-black uppercase text-white">{pkg.label}</p>
-                                    <p className="text-[9px] text-slate-500 italic">Betal sikkert med kort</p>
+                                    <p className="text-[10px] font-black uppercase">{pkg.label}</p>
+                                    <p className="text-[9px] text-slate-500 italic">{pkg.desc}</p>
                                 </div>
-                                <div className="text-right flex items-center gap-3">
-                                    <span className="text-lg font-serif text-amber-500">{pkg.price}</span>
-                                    <ChevronRight size={14} className="text-slate-700 group-hover:text-amber-500" />
-                                </div>
+                                <span className="text-lg font-serif text-amber-500">{pkg.price}</span>
                             </button>
                         ))}
                     </div>
                 )}
-            </section>
-
-            <section className="bg-white/5 p-8 rounded-[2.5rem] border border-white/5 space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Kosmisk Prisliste</h4>
-                <ul className="space-y-3">
-                    {[
-                        { icon: Sparkles, label: 'Tarot-legg', cost: '1 Kreditt' },
-                        { icon: Activity, label: 'Relokasjons-analyse', cost: '1 Kreditt' },
-                        { icon: Zap, label: '7-Dagers Prognose', cost: '1 Kreditt' },
-                        { icon: MessageCircle, label: 'Dyp AI-tolkning', cost: '1 Kreditt' },
-                        { icon: BookOpen, label: 'Komplett Livsbok', cost: '5 Kreditter' },
-                    ].map((item, i) => (
-                        <li key={i} className="flex items-center justify-between text-[11px]">
-                            <span className="flex items-center gap-2 text-slate-400"><item.icon size={12} className="text-indigo-500" /> {item.label}</span>
-                            <span className="text-white font-bold">{item.cost}</span>
-                        </li>
-                    ))}
-                </ul>
             </section>
         </div>
 
