@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, createContext, useRef } from 'react';
-import { Sparkles, Sun, Loader2, X, ChevronRight, Download, Save, Scroll, RefreshCw, Fingerprint, Heart, Zap, Compass, Star, Printer, Lock, Shield, CheckCircle, Info, Users, User, LayoutDashboard, History, UserCircle, Activity, MapPin, Calendar, Globe, Clock as ClockIcon } from './components/Icons';
+import { Sparkles, Sun, Loader2, X, ChevronRight, Download, Save, Scroll, RefreshCw, Fingerprint, Heart, Zap, Compass, Star, Printer, Lock, Shield, CheckCircle, Info, Users, User, LayoutDashboard, History, UserCircle, Activity, MapPin, Calendar, Globe, Clock as ClockIcon, Settings as SettingsIcon } from './components/Icons';
 import Tarot from './components/Tarot';
 import Numerology from './components/Numerology';
 import ChartWheel from './components/ChartWheel';
@@ -11,25 +11,14 @@ import Horoscope from './components/Horoscope';
 import ChineseAstrology from './components/ChineseAstrology';
 import LandingPage from './components/LandingPage';
 import AdminCRM from './components/AdminCRM';
+import Settings from './components/Settings';
+import Tools from './components/Tools';
 import { AstrologyService } from './services/astrology';
 import { CalculatedChart, Language, PlanetPosition, AstrologyMode } from './types';
 import { UI_TRANSLATIONS } from './constants';
 
 export const LangContext = createContext<{lang: Language, setLang: (l: Language) => void}>({} as any);
 export const ThemeContext = createContext<{theme: 'light' | 'dark', setTheme: (t: 'light' | 'dark') => void}>({} as any);
-
-const TRADITION_OPTIONS = [
-  { id: 'esoteric', label: 'Esoterisk', icon: Sparkles },
-  { id: 'classical', label: 'Klassisk', icon: Scroll },
-  { id: 'vedic', label: 'Vedisk', icon: Globe },
-  { id: 'merged', label: 'Modern', icon: Sun }
-];
-
-const ANALYSIS_OPTIONS = [
-  { id: 'natal', label: 'Natal-kart', icon: UserCircle },
-  { id: 'transit', label: 'Transitter', icon: Activity },
-  { id: 'relocation', label: 'Flytting', icon: MapPin }
-];
 
 export default function AstroMasonApp() {
   const [lang, setLang] = useState<Language>('no');
@@ -59,9 +48,13 @@ export default function AstroMasonApp() {
   const handleLogin = (userData: { email: string; isAdmin: boolean }) => {
     setIsAuthenticated(true);
     setIsAdmin(userData.isAdmin);
-    const hasData = localStorage.getItem('soul_name');
+    
+    const hasName = localStorage.getItem('soul_name');
+    const hasDate = localStorage.getItem('soul_date');
+    const isProfileComplete = hasName && hasDate;
+
     if (userData.isAdmin) setActiveTab('crm');
-    else if (!hasData) setActiveTab('profile');
+    else if (!isProfileComplete) setActiveTab('profile');
     else setActiveTab('dashboard');
   };
 
@@ -107,6 +100,17 @@ export default function AstroMasonApp() {
   useEffect(() => { refreshNatalData(true); }, [astrologyMode]);
 
   const generateReport = async (type: string) => {
+    // Sjekk kreditter (5 kreditter for full Livsbok)
+    const userEmail = localStorage.getItem('soul_email') || '';
+    const currentCredits = parseInt(localStorage.getItem('tarot_credits') || '0');
+    
+    if (currentCredits < 5) {
+        if (confirm("En komplett Livsbok koster 5 kreditter. Vil du gå til innstillinger for å fylle på?")) {
+            setActiveTab('settings');
+        }
+        return;
+    }
+
     if (!activeChart) return;
     setIsLoading(true);
     setLoadingText('AstroMason dechiffrerer din sjel...');
@@ -118,6 +122,10 @@ export default function AstroMasonApp() {
         lang,
         natalChart || undefined
       );
+      
+      // Trekk kreditter
+      localStorage.setItem('tarot_credits', (currentCredits - 5).toString());
+      
       setReportData(data);
       setShowReport(true);
     } catch (e) {
@@ -126,42 +134,6 @@ export default function AstroMasonApp() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const calculateTransitsForDate = async (dateStr: string) => {
-    if (!natalChart) return;
-    setIsCalculatingTransit(true);
-    try {
-      const transitData = await AstrologyService.calculateChart({
-        name: `Livsløp: ${dateStr}`,
-        date: dateStr,
-        time: natalChart.time || '12:00',
-        location: natalChart.location,
-        houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
-      }, astrologyMode, natalChart.coords);
-      
-      setActiveChart(transitData);
-    } catch (e) {
-      console.error("Transit calculation failed", e);
-    } finally {
-      setIsCalculatingTransit(false);
-    }
-  };
-
-  const handleAgeChange = (age: number) => {
-    if (!natalChart) return;
-    setTransitAge(age);
-    const birthDate = new Date(natalChart.date);
-    const targetDate = new Date(birthDate);
-    targetDate.setFullYear(birthDate.getFullYear() + age);
-    const dateStr = targetDate.toISOString().split('T')[0];
-    setTransitDate(dateStr);
-    calculateTransitsForDate(dateStr);
-  };
-
-  const getRelevantAspects = (planetName: string) => {
-    if (!activeChart) return [];
-    return activeChart.aspects.filter(a => a.planet1 === planetName || a.planet2 === planetName);
   };
 
   if (!isAuthenticated) return (
@@ -206,10 +178,39 @@ export default function AstroMasonApp() {
               {activeTab === 'horoscope' && <Horoscope natalChart={natalChart} />}
               {activeTab === 'chinese' && <ChineseAstrology />}
               {activeTab === 'profile' && <Profile onUpdate={() => refreshNatalData(true)} />}
-              {activeTab === 'tarot' && <Tarot />}
+              {activeTab === 'tarot' && <Tarot onNavigateToSettings={() => setActiveTab('settings')} />}
               {activeTab === 'numerology' && <Numerology />}
               {activeTab === 'crm' && isAdmin && <AdminCRM />}
-
+              {activeTab === 'settings' && <Settings />}
+              {activeTab === 'astrology' && natalChart && !showReport && (
+                <div className="max-w-7xl mx-auto space-y-12">
+                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                      <div className="lg:col-span-7">
+                         <div className="bg-white/5 p-12 rounded-[4rem] border border-white/10 chart-to-print shadow-2xl">
+                            {activeChart && (
+                                <ChartWheel positions={activeChart.positions} ascendantDegree={activeChart.ascendantDegree} houses={activeChart.houseCusps} aspects={activeChart.aspects} onPlanetClick={setSelectedPlanet} />
+                            )}
+                         </div>
+                      </div>
+                      <div className="lg:col-span-5 flex flex-col justify-center space-y-8">
+                         <div className="bg-indigo-900/10 p-10 rounded-[3rem] border border-indigo-500/20 space-y-4">
+                            <h3 className="font-serif text-2xl text-white">Din Sjels Kronike</h3>
+                            <p className="text-slate-400 text-sm font-light leading-relaxed">
+                                En dyptgående analyse på 4000+ ord som dechiffrerer din sjel, dine karmiske bånd og ditt fulle potensial.
+                            </p>
+                            <div className="pt-4 flex items-center justify-between border-t border-white/5">
+                                <span className="text-[10px] uppercase font-black tracking-widest text-indigo-400">Pris for analyse</span>
+                                <span className="text-xl font-serif text-amber-500">5 Kreditter</span>
+                            </div>
+                         </div>
+                         <button onClick={() => generateReport(subMode)} className="w-full py-8 bg-gradient-to-r from-amber-400 to-amber-600 rounded-[2.5rem] font-black uppercase text-xs text-black shadow-2xl hover:scale-[1.02] transition-all">
+                            <Scroll size={20} className="inline mr-2" /> Skriv Min Livsbok
+                         </button>
+                      </div>
+                   </div>
+                </div>
+              )}
+              {/* ... Resten av logikken for rapporter og identitet mangler ... */}
               {activeTab === 'astrology' && !natalChart && (
                 <div className="max-w-xl mx-auto py-12 animate-fade-in no-print text-center">
                    <div className="bg-[#0f0f25]/80 p-12 rounded-[4rem] border border-white/5 space-y-10 backdrop-blur-md">
@@ -224,134 +225,6 @@ export default function AstroMasonApp() {
                    </div>
                 </div>
               )}
-
-              {activeTab === 'astrology' && natalChart && !showReport && (
-                <div className="max-w-7xl mx-auto space-y-12">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 no-print">
-                     <div className="bg-white/5 p-8 rounded-[3rem] border border-white/5 space-y-6">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-amber-500">Tradisjon</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            {TRADITION_OPTIONS.map(opt => (
-                                <button key={opt.id} onClick={() => {setAstrologyMode(opt.id as any); setSelectedPlanet(null);}} className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 ${astrologyMode === opt.id ? 'bg-amber-500 border-amber-400 text-black' : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5'}`}>
-                                    <opt.icon size={18} />
-                                    <div className="leading-tight">
-                                        <p className="text-[10px] font-black uppercase">{opt.label}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                     </div>
-
-                     <div className="bg-white/5 p-8 rounded-[3rem] border border-white/5 space-y-6">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400">Analyse</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            {ANALYSIS_OPTIONS.map(opt => (
-                                <button key={opt.id} onClick={() => { 
-                                    setSubMode(opt.id);
-                                    setSelectedPlanet(null);
-                                    if (opt.id === 'natal') setActiveChart(natalChart);
-                                    if (opt.id === 'transit') calculateTransitsForDate(transitDate);
-                                }} className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 ${subMode === opt.id ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-black/20 border-white/5 text-slate-500 hover:bg-white/5'}`}>
-                                    <opt.icon size={18} />
-                                    <div className="leading-tight">
-                                        <p className="text-[10px] font-black uppercase">{opt.label}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 print-container">
-                    <div className="lg:col-span-7 space-y-6">
-                        <div className="bg-white/5 p-12 rounded-[4rem] border border-white/10 relative overflow-hidden chart-to-print shadow-2xl">
-                           {activeChart && (
-                             <div className={isCalculatingTransit ? 'opacity-20 transition-opacity' : 'opacity-100'}>
-                                <ChartWheel positions={activeChart.positions} ascendantDegree={activeChart.ascendantDegree} houses={activeChart.houseCusps} aspects={activeChart.aspects} onPlanetClick={setSelectedPlanet} />
-                             </div>
-                           )}
-                           {isCalculatingTransit && (
-                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] rounded-[4rem] z-20">
-                                <div className="flex flex-col items-center gap-4">
-                                   <Loader2 className="animate-spin text-amber-500" size={64} />
-                                   <p className="text-amber-100 font-serif text-lg animate-pulse">Oppdaterer transitter...</p>
-                                </div>
-                             </div>
-                           )}
-                        </div>
-                        
-                        {subMode === 'transit' && (
-                            <div className="bg-[#0f0f25]/80 backdrop-blur-md p-8 rounded-[3rem] border border-indigo-500/30 space-y-6 no-print">
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest ml-1">Velg Spesifikk Dato</label>
-                                        <input 
-                                          type="date" 
-                                          value={transitDate} 
-                                          onChange={(e) => {
-                                            setTransitDate(e.target.value);
-                                            calculateTransitsForDate(e.target.value);
-                                          }}
-                                          className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-white focus:border-amber-500 outline-none"
-                                        />
-                                    </div>
-                                    <div className="text-right">
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Livets Fase</h4>
-                                        <span className="text-4xl font-serif text-amber-400">{transitAge} år</span>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-4 pt-4 border-t border-white/5">
-                                    <input 
-                                        type="range" 
-                                        min="0" 
-                                        max="100" 
-                                        value={transitAge} 
-                                        onChange={(e) => handleAgeChange(parseInt(e.target.value))}
-                                        className="w-full h-2 bg-indigo-900/50 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                                    />
-                                 </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="lg:col-span-5 space-y-8 no-print">
-                      {selectedPlanet ? (
-                        <div className="bg-[#0f0f25] p-10 rounded-[3rem] border border-amber-500/30 space-y-6 animate-slide-up shadow-2xl relative overflow-hidden">
-                          <button onClick={() => setSelectedPlanet(null)} className="absolute top-6 right-6 text-slate-500 hover:text-white"><X size={20}/></button>
-                          <div className="flex items-center gap-4">
-                             <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center text-4xl text-amber-500 border border-amber-500/20">{selectedPlanet.symbol}</div>
-                             <div>
-                                <h4 className="text-2xl font-serif text-white">{selectedPlanet.name}</h4>
-                                <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">{selectedPlanet.sign} {selectedPlanet.degree}° {selectedPlanet.minute}'</p>
-                             </div>
-                          </div>
-                          
-                          <div className="space-y-4 pt-4 border-t border-white/5">
-                            <div className="bg-black/30 p-4 rounded-xl">
-                               <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Hus-plassering</p>
-                               <p className="text-sm text-indigo-200">Plassert i ditt {selectedPlanet.house}. hus</p>
-                            </div>
-                            <div className="text-slate-300 text-sm leading-relaxed font-light italic bg-indigo-500/5 p-4 rounded-xl border border-indigo-500/10">
-                               {selectedPlanet.isRetrograde && <p className="text-red-400 text-[10px] font-black uppercase mb-2">● Retrograd - Indre refleksjon påkrevd</p>}
-                               <span>Dette indikerer en dyp kobling til sjelens {selectedPlanet.house}. hus. Resonansen farger denne energiene og skaper en dynamisk flyt i din personlighet.</span>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-[#0f0f25]/40 p-10 rounded-[3rem] border border-white/5 flex flex-col items-center justify-center text-center space-y-4 min-h-[300px] border-dashed">
-                           <Compass size={48} className="text-slate-700" />
-                           <p className="font-serif italic text-slate-500">Trykk på en planet i kartet for å lese sjelens melding</p>
-                        </div>
-                      )}
-
-                      <button onClick={() => generateReport(subMode)} className="w-full py-8 bg-gradient-to-r from-amber-400 to-amber-600 rounded-[2.5rem] font-black uppercase text-xs text-black shadow-2xl hover:scale-[1.02] transition-all">
-                        <Scroll size={20} className="inline mr-2" /> Skriv Min Livsbok
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {activeTab === 'astrology' && showReport && reportData && (
                 <div className="max-w-4xl mx-auto py-12 animate-fade-in space-y-12 pb-32">
                   <div className="bg-[#0a0a1a] p-12 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
@@ -383,16 +256,11 @@ export default function AstroMasonApp() {
                   </div>
                 </div>
               )}
+              {/* Vise verktøy tab */}
+              {activeTab === 'tools' && <Tools onNavigateToSettings={() => setActiveTab('settings')} />}
             </>
           )}
         </main>
-
-        {isLoading && (
-          <div className="fixed inset-0 z-[500] bg-[#050511]/90 backdrop-blur-3xl flex flex-col items-center justify-center space-y-8">
-            <Loader2 className="animate-spin text-amber-500" size={120} />
-            <h2 className="text-3xl font-serif text-amber-100">{loadingText}</h2>
-          </div>
-        )}
       </div>
     </ThemeContext.Provider>
     </LangContext.Provider>

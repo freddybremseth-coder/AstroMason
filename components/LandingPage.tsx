@@ -27,6 +27,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     e.preventDefault();
     setIsProcessing(true);
 
+    // Lagre e-post for å identifisere brukeren i appen
+    localStorage.setItem('soul_email', email);
+
+    // Lagre navn hvis brukeren registrerer seg, slik at det er forhåndsutfylt i appen
+    if (authMode === 'register' && name) {
+        localStorage.setItem('soul_name', name);
+    }
+
     // Superadmin sjekk
     if (authMode === 'login' && email === 'freddy.bremseth@gmail.com' && password === 'AllAstro1!') {
         setTimeout(() => {

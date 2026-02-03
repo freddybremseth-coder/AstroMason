@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-// Removed non-existent icon imports 'Filter', 'Zap' and 'ArrowUpRight' as they are not used and 'Filter'/'ArrowUpRight' are missing from Icons.tsx
-import { Users, CreditCard, Mail, Search, Download, CheckCircle, XCircle, Star, Shield } from './Icons';
+import { Users, CreditCard, Mail, Search, Download, CheckCircle, XCircle, Star, Shield, Send, X, Loader2, Sparkles } from './Icons';
 
 interface UserRecord {
   id: string;
@@ -16,6 +16,10 @@ interface UserRecord {
 const AdminCRM: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'master' | 'marketing'>('all');
+  const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
+  const [messageData, setMessageData] = useState({ subject: '', body: '' });
   
   // Simulert datagrunnlag for CRM (Dette vil hentes fra Supabase senere)
   const [users] = useState<UserRecord[]>([
@@ -32,11 +36,30 @@ const AdminCRM: React.FC = () => {
     return matchesSearch;
   });
 
+  const marketingUsers = users.filter(u => u.allowMarketing);
+
   const stats = {
     totalUsers: users.length,
     masterSubscribers: users.filter(u => u.subscription === 'Master').length,
     revenue: users.reduce((acc, curr) => acc + curr.totalSpent, 0),
     marketingAccept: users.filter(u => u.allowMarketing).length
+  };
+
+  const handleSendMassUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageData.subject || !messageData.body) return;
+
+    setIsSending(true);
+    // Simulere utsending til API/Supabase Edge Function
+    setTimeout(() => {
+        setIsSending(false);
+        setSendSuccess(true);
+        setTimeout(() => {
+            setSendSuccess(false);
+            setIsComposeModalOpen(false);
+            setMessageData({ subject: '', body: '' });
+        }, 2000);
+    }, 2500);
   };
 
   return (
@@ -54,8 +77,11 @@ const AdminCRM: React.FC = () => {
             <button className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
                 <Download size={14} /> Eksporter CSV
             </button>
-            <button className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-900/20">
-                Send Masseoppdatering
+            <button 
+                onClick={() => setIsComposeModalOpen(true)}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-900/20 flex items-center gap-2"
+            >
+                <Send size={14} /> Send Masseoppdatering
             </button>
         </div>
       </header>
@@ -163,6 +189,84 @@ const AdminCRM: React.FC = () => {
             <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic">Viser {filteredUsers.length} av {users.length} sjeler i databasen</p>
         </div>
       </section>
+
+      {/* Compose Bulk Message Modal */}
+      {isComposeModalOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
+              <div className="bg-[#0a0a16] border border-white/10 w-full max-w-2xl rounded-[3rem] p-12 relative shadow-2xl animate-in zoom-in-95 duration-300">
+                  <button onClick={() => !isSending && setIsComposeModalOpen(false)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+                  
+                  {sendSuccess ? (
+                      <div className="text-center py-20 space-y-6 animate-fade-in">
+                          <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto text-green-500">
+                              <CheckCircle size={48} />
+                          </div>
+                          <div className="space-y-2">
+                              <h3 className="text-3xl font-serif text-white italic">Meldingene er kanalisert!</h3>
+                              <p className="text-slate-500 text-[10px] uppercase font-black tracking-[0.3em]">Sending vellykket til {marketingUsers.length} mottakere</p>
+                          </div>
+                      </div>
+                  ) : (
+                      <>
+                        <div className="text-center mb-10 space-y-2">
+                            <h2 className="text-3xl font-serif font-bold text-white">Masseoppdatering</h2>
+                            <p className="text-[10px] text-indigo-400 uppercase tracking-widest font-black">
+                                <Mail size={12} className="inline mr-2" /> 
+                                Sender til {marketingUsers.length} sjeler med aktivt samtykke
+                            </p>
+                        </div>
+                        
+                        <form onSubmit={handleSendMassUpdate} className="space-y-6">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest ml-1">E-post Emne</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="f.eks. Ny oppgradering: Tidshjulet er her!" 
+                                        value={messageData.subject}
+                                        onChange={e => setMessageData({...messageData, subject: e.target.value})}
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-indigo-500 transition-all text-sm" 
+                                        required 
+                                        disabled={isSending}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest ml-1">Meldingstekst</label>
+                                    <textarea 
+                                        placeholder="Kjære søkende sjel..." 
+                                        value={messageData.body}
+                                        onChange={e => setMessageData({...messageData, body: e.target.value})}
+                                        className="w-full bg-white/5 border border-white/10 rounded-3xl px-6 py-4 text-white focus:outline-none focus:border-indigo-500 transition-all text-sm h-64 resize-none" 
+                                        required 
+                                        disabled={isSending}
+                                    />
+                                </div>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                disabled={isSending || !messageData.subject || !messageData.body} 
+                                className="w-full bg-indigo-600 text-white font-black uppercase tracking-widest py-6 rounded-2xl text-[11px] hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-900/40 flex items-center justify-center gap-3"
+                            >
+                                {isSending ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" />
+                                        Kanaliserer melding...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles size={18} />
+                                        Send Broadcast Nå
+                                    </>
+                                )}
+                            </button>
+                            <p className="text-[9px] text-slate-600 text-center uppercase font-bold tracking-widest">Dette sender en e-post direkte til alle brukere som har huket av for markedsføring.</p>
+                        </form>
+                      </>
+                  )}
+              </div>
+          </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext } from 'react';
 import { UserCircle, User, Key, History, Save, Download, FileText, BookOpen, Trash2, Shield, Lock, ExternalLink, Moon, Sun, Monitor, Printer, X, Loader2, CheckCircle, Info, MapPin, Calendar, Clock as ClockIcon, ChevronRight } from './Icons';
 import { ThemeContext, LangContext } from '../App';
@@ -67,15 +66,9 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
     setTimeout(() => {
         setIsSaving(false);
         setShowSuccess(true);
-        if (onUpdate) onUpdate(); // Varsle App om endringen
+        if (onUpdate) onUpdate(); 
         setTimeout(() => setShowSuccess(false), 3000);
     }, 800);
-  };
-
-  const saveApiKeys = () => {
-    localStorage.setItem('gemini_api_key', apiKeys.gemini);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   const openReport = (saved: SavedReport) => {
@@ -104,6 +97,11 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
             <button onClick={() => setSelectedReport(null)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
                 <X size={20} />
             </button>
+            <div className="absolute top-8 right-8 flex gap-3 no-print">
+                <button onClick={() => window.print()} className="p-3 bg-amber-500/10 rounded-full hover:bg-amber-500/20 transition-all text-amber-500 flex items-center gap-2 px-6">
+                    <Printer size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">PDF / Utskrift</span>
+                </button>
+            </div>
             <header className="text-center space-y-4 mb-16">
                 <h1 className="text-5xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
                     {selectedReport.report?.title || selectedReport.meta.title}
@@ -123,9 +121,10 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
         </button>
     </div>
   );
-
+  /* ... remaining code ... */
   return (
     <div className="max-w-7xl mx-auto py-12 px-6 animate-fade-in space-y-12">
+      {/* ... profile form and reports list code ... */}
       <header className="flex flex-col md:flex-row md:items-center gap-6">
         <div className="w-24 h-24 rounded-[2.5rem] bg-gradient-to-br from-amber-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-serif font-bold shadow-2xl relative">
           {soulData.name.charAt(0) || "S"}
@@ -201,11 +200,14 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
               <div className="grid grid-cols-1 gap-4">
                 {savedReports.map((report) => (
                   <div key={report.id} className="bg-[#0a0a1a]/80 border border-white/5 p-6 rounded-[2.5rem] group hover:border-amber-500/30 transition-all flex items-center justify-between">
-                    <div>
+                    <div className="flex-1">
                       <h4 className="text-lg font-serif text-white group-hover:text-amber-100 transition-colors">{report.title}</h4>
                       <p className="text-[9px] text-slate-500 uppercase font-black">{new Date(report.date).toLocaleDateString()}</p>
                     </div>
-                    <button onClick={() => openReport(report)} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all">Åpne</button>
+                    <div className="flex gap-2">
+                      <button onClick={() => openReport(report)} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all">Åpne</button>
+                      <button onClick={() => deleteReport(report.id)} className="p-4 bg-red-900/10 hover:bg-red-900/20 border border-red-900/20 rounded-2xl text-red-500 transition-all"><Trash2 size={16}/></button>
+                    </div>
                   </div>
                 ))}
               </div>

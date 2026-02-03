@@ -1,15 +1,26 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Sparkles, User } from './Icons';
+import { MessageCircle, X, Send, Loader2, Sparkles, User, Wallet } from './Icons';
 
 const AiAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const userEmail = localStorage.getItem('soul_email') || '';
+  
+  const [credits, setCredits] = useState<number>(() => {
+    const saved = localStorage.getItem('tarot_credits');
+    return saved !== null ? parseInt(saved) : (userEmail === 'freddy.bremseth@gmail.com' ? 200000 : 0);
+  });
+
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
-    { role: 'assistant', content: 'Hei! Jeg er Astro Mason AI. Jeg kan svare på spørsmål om horoskopet ditt basert på eksperter som Steven Forrest og Liz Greene. Hva lurer du på?' }
+    { role: 'assistant', content: 'Hei! Jeg er Astro Mason AI. Jeg kan gi deg dype tolkninger av ditt kart og transitter. Hver dype analyse koster 1 kreditt.' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('tarot_credits', credits.toString());
+  }, [credits]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -20,35 +31,27 @@ const AiAssistant: React.FC = () => {
   const handleSend = async () => {
     if (!input.trim()) return;
     
+    if (credits < 1) {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Du har dessverre 0 kreditter. Gå til innstillinger for å fylle på slik at vi kan fortsette samtalen.' }]);
+        return;
+    }
+
     const userMsg = input;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setLoading(true);
 
     try {
-        const savedCharts = localStorage.getItem('astroMasonCharts');
-        let chartContext = {};
-        if (savedCharts) {
-            const charts = JSON.parse(savedCharts);
-            if (charts.length > 0) {
-                const latest = charts[0];
-                chartContext = {
-                    ascendant: latest.ascendant,
-                    positions: latest.positions
-                };
-            }
-        }
+        // Trekk 1 kreditt
+        setCredits(prev => prev - 1);
 
-        // Simulate API response for now since we don't have a live backend in this environment
-        // In production, this would hit http://127.0.0.1:8000/api/chat
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Simple heuristic response simulation
-        const response = "Dette er en simulert AI-respons. Koble til en backend med Gemini API-nøkkel for ekte svar.";
+        // Simulere dyp respons
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const response = "Dine stjerner indikerer en kraftig transformasjon i ditt 4. hus akkurat nå. Pluto beveger seg sakte gjennom Steinbukken, noe som krever at du ser på dine røtter med nye øyne. Dette er en tid for å gi slipp på gamle strukturer for å gi plass til en mer autentisk grunnmur.";
         
         setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     } catch (error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Beklager, jeg har problemer med å nå stjernene akkurat nå.' }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Beklager, de kosmiske forbindelsene er midlertidig nede.' }]);
     } finally {
         setLoading(false);
     }
@@ -56,39 +59,39 @@ const AiAssistant: React.FC = () => {
 
   return (
     <>
-      {/* Toggle Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 ${isOpen ? 'bg-white dark:bg-space-800 text-gray-500 dark:text-gray-400 rotate-90 border border-gray-200 dark:border-space-700' : 'bg-gold-600 text-white'}`}
+        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 ${isOpen ? 'bg-white dark:bg-space-800 text-gray-500 rotate-90 border border-gray-200' : 'bg-indigo-600 text-white'}`}
       >
         {isOpen ? <X size={24} /> : <MessageCircle size={28} />}
       </button>
 
-      {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[500px] bg-white dark:bg-space-950 border border-gray-200 dark:border-gold-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+        <div className="fixed bottom-24 right-6 z-50 w-96 h-[550px] bg-white dark:bg-space-950 border border-gray-200 dark:border-indigo-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-300">
           
-          {/* Header */}
-          <div className="p-4 bg-gray-50 dark:bg-space-900 border-b border-gray-200 dark:border-space-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gold-50 dark:bg-gold-900/20 border border-gold-200 dark:border-gold-500/50 flex items-center justify-center text-gold-600 dark:text-gold-500">
-                <Sparkles size={20} />
+          <div className="p-4 bg-gray-50 dark:bg-space-900 border-b border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
+                    <Sparkles size={20} />
+                </div>
+                <div>
+                    <h3 className="font-serif font-bold text-gray-900 dark:text-gray-100">AstroMason AI</h3>
+                    <p className="text-[9px] text-green-600 font-black uppercase">Deep Analyzer</p>
+                </div>
             </div>
-            <div>
-                <h3 className="font-serif font-bold text-gray-900 dark:text-gray-100">Astro Mason AI</h3>
-                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
-                </p>
+            <div className="text-right pr-2">
+                <p className="text-[8px] uppercase font-black text-slate-500">Kreditter</p>
+                <p className="text-sm font-serif text-amber-600">{credits}</p>
             </div>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-space-950/50">
             {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] p-3 rounded-xl text-sm leading-relaxed ${
+                    <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
                         msg.role === 'user' 
-                        ? 'bg-gold-600 text-white rounded-tr-none shadow-md' 
-                        : 'bg-gray-100 dark:bg-space-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-space-700 rounded-tl-none shadow-sm'
+                        ? 'bg-indigo-600 text-white rounded-tr-none shadow-md' 
+                        : 'bg-gray-100 dark:bg-space-800 text-gray-800 dark:text-gray-200 border border-gray-200 rounded-tl-none'
                     }`}>
                         {msg.content}
                     </div>
@@ -96,29 +99,28 @@ const AiAssistant: React.FC = () => {
             ))}
             {loading && (
                 <div className="flex justify-start">
-                    <div className="bg-gray-100 dark:bg-space-800 p-3 rounded-xl rounded-tl-none border border-gray-200 dark:border-space-700">
-                        <Loader2 size={16} className="animate-spin text-gold-500" />
+                    <div className="bg-gray-100 dark:bg-space-800 p-4 rounded-2xl rounded-tl-none border border-gray-200">
+                        <Loader2 size={16} className="animate-spin text-indigo-500" />
                     </div>
                 </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="p-4 bg-gray-50 dark:bg-space-900 border-t border-gray-200 dark:border-space-800">
+          <div className="p-4 bg-gray-50 dark:bg-space-900 border-t border-gray-200">
             <div className="relative">
                 <input 
                     type="text" 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Spør om ditt horoskop..."
-                    className="w-full bg-white dark:bg-space-950 border border-gray-300 dark:border-space-700 rounded-full py-3 pl-4 pr-12 text-sm text-gray-900 dark:text-gray-200 focus:border-gold-500 focus:outline-none shadow-inner"
+                    placeholder="Spør om ditt horoskop (1 kreditt)..."
+                    className="w-full bg-white dark:bg-space-950 border border-gray-300 dark:border-space-700 rounded-full py-3 pl-4 pr-12 text-sm focus:border-indigo-500 outline-none"
                 />
                 <button 
                     onClick={handleSend}
                     disabled={loading || !input.trim()}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gold-600 text-white rounded-full hover:bg-gold-700 disabled:opacity-50 disabled:hover:bg-gold-600 transition-colors shadow-sm"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                 >
                     <Send size={16} />
                 </button>

@@ -1,6 +1,6 @@
 
 import React, { useContext } from 'react';
-import { LayoutDashboard, Sun, Globe, ExternalLink, LogOut, Sparkles, Fingerprint, UserCircle, Calendar, Star, Shield } from './Icons';
+import { LayoutDashboard, Sun, Globe, ExternalLink, LogOut, Sparkles, Fingerprint, UserCircle, Calendar, Star, Shield, Settings as SettingsIcon, Zap } from './Icons';
 import { NavItem, Language } from '../types';
 import { UI_TRANSLATIONS } from '../constants';
 import { LangContext } from '../App';
@@ -32,13 +32,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: t.navDashboard, icon: LayoutDashboard },
     { id: 'profile', label: t.navProfile, icon: UserCircle },
     { id: 'horoscope', label: t.navHoroscope, icon: Calendar },
-    { id: 'chinese', label: t.navChineseAstrology, icon: Star },
     { id: 'astrology', label: t.navAstrology, icon: Sun },
+    { id: 'tools', label: 'Verktøy', icon: Zap },
+    { id: 'chinese', label: t.navChineseAstrology, icon: Star },
     { id: 'numerology', label: t.navNumerology, icon: Fingerprint },
     { id: 'tarot', label: t.navTarot, icon: Sparkles },
+    { id: 'settings', label: t.navSettings, icon: SettingsIcon },
   ];
 
-  // Legg til CRM hvis bruker er admin
   if (isAdmin) {
     navItems.push({ id: 'crm', label: 'Admin CRM', icon: Shield });
   }
@@ -70,10 +71,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
-              const isSpecial = item.id === 'crm';
               return (
                 <button key={item.id} onClick={() => { setView(item.id); setIsMobileOpen(false); }}
-                  className={`w-full flex items-center gap-4 px-5 py-4 text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all ${isActive ? (isSpecial ? 'bg-red-600 text-white shadow-xl shadow-red-900/40' : 'bg-amber-500 text-black shadow-xl shadow-amber-500/20') : 'text-slate-500 hover:text-white hover:bg-white/5'}`}>
+                  className={`w-full flex items-center gap-4 px-5 py-4 text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all ${isActive ? 'bg-amber-500 text-black shadow-xl shadow-amber-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}>
                   <Icon size={18} />
                   {item.label}
                 </button>

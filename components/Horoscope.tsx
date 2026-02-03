@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useContext } from 'react';
-import { Calendar, Clock, Sun, Moon, Activity, Sparkles, Loader2, Scroll, BookOpen, Fingerprint } from './Icons';
+import { Calendar, Clock, Sun, Moon, Activity, Sparkles, Loader2, Scroll, BookOpen, Fingerprint, Printer } from './Icons';
 import { AstrologyService } from '../services/astrology';
 import { CalculatedChart, Language } from '../types';
 import { LangContext } from '../App';
@@ -65,7 +64,7 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
         <p className="text-slate-500 text-xs uppercase tracking-[0.5em] font-black">{t.horoscopeSubtitle}</p>
       </header>
 
-      <div className="flex flex-wrap justify-center gap-3">
+      <div className="flex flex-wrap justify-center gap-3 no-print">
         {periods.map(p => (
             <button key={p.id} onClick={() => setPeriod(p.id)} className={`px-6 py-4 rounded-2xl border flex items-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest ${period === p.id ? 'bg-amber-500 border-amber-400 text-black shadow-xl shadow-amber-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'}`}>
                 <p.icon size={16} /> {p.label}
@@ -74,6 +73,11 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
       </div>
 
       <div className="bg-[#0a0a1a] p-10 md:p-16 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden min-h-[500px]">
+        <div className="absolute top-8 right-8 no-print">
+            <button onClick={() => window.print()} className="p-3 bg-amber-500/10 rounded-full hover:bg-amber-500/20 transition-all text-amber-500 flex items-center gap-2 px-6">
+                <Printer size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">PDF / Utskrift</span>
+            </button>
+        </div>
         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
             <Sparkles size={200} />
         </div>
