@@ -34,19 +34,38 @@ const Settings: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Freddy-regel: Hvis balansen er 100 000 eller mindre, legg til 100 000
     if (userEmail === 'freddy.bremseth@gmail.com' && credits <= 100000) {
         setCredits(prev => prev + 100000);
     }
     localStorage.setItem('tarot_credits', credits.toString());
   }, [credits, userEmail]);
 
-  const buyCredits = (amount: number) => {
+  // PRO-TIPS: For Stripe på Vercel vil denne funksjonen kalle din egen API
+  const buyCredits = async (amount: number, priceId: string) => {
     setIsPaying(true);
-    setTimeout(() => {
-        setCredits(prev => prev + amount);
+    
+    try {
+        // I en ekte produksjonsapp på Vercel ville du gjort dette:
+        /*
+        const response = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ priceId, email: userEmail, amount })
+        });
+        const session = await response.json();
+        window.location.href = session.url; // Sender brukeren til Stripe
+        */
+
+        // Simulering for nå:
+        setTimeout(() => {
+            setCredits(prev => prev + amount);
+            setIsPaying(false);
+            alert(`Suksess! ${amount} kosmiske kreditter er lagt til din sjelsprofil.`);
+        }, 1500);
+    } catch (error) {
+        alert("Kunne ikke kontakte betalingsportalen. Prøv igjen senere.");
         setIsPaying(false);
-    }, 1500);
+    }
   };
 
   const deleteReport = (id: string) => {
@@ -107,7 +126,6 @@ const Settings: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* User & Credit Store */}
         <div className="lg:col-span-4 space-y-8">
             <section className="bg-[#0f0f25] border border-white/5 p-10 rounded-[3.5rem] shadow-2xl space-y-8">
                 <div className="flex items-center gap-6">
@@ -136,20 +154,20 @@ const Settings: React.FC = () => {
                 {isPaying ? (
                     <div className="py-12 text-center space-y-4">
                         <Loader2 size={32} className="animate-spin text-amber-500 mx-auto" />
-                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Behandler transaksjon...</p>
+                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Kontakter Stripe...</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {[
-                            { id: 1, amount: 1, price: '€2', label: '1 Reise' },
-                            { id: 5, amount: 5, price: '€5', label: '5 Reiser (Populær)', best: true },
-                            { id: 20, amount: 20, price: '€10', label: '20 Reiser (Verdi)' },
-                            { id: 200, amount: 200, price: '€50', label: 'Mester-pakke' }
+                            { id: 'price_1', amount: 1, price: '€2', label: '1 Reise', priceId: 'stripe_id_1' },
+                            { id: 'price_5', amount: 5, price: '€5', label: '5 Reiser (Populær)', best: true, priceId: 'stripe_id_2' },
+                            { id: 'price_20', amount: 20, price: '€10', label: '20 Reiser (Verdi)', priceId: 'stripe_id_3' },
+                            { id: 'price_200', amount: 200, price: '€50', label: 'Mester-pakke', priceId: 'stripe_id_4' }
                         ].map(pkg => (
-                            <button key={pkg.id} onClick={() => buyCredits(pkg.amount)} className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between group ${pkg.best ? 'bg-amber-500/10 border-amber-500/50' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
+                            <button key={pkg.id} onClick={() => buyCredits(pkg.amount, pkg.priceId)} className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between group ${pkg.best ? 'bg-amber-500/10 border-amber-500/50' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
                                 <div className="text-left">
                                     <p className="text-[10px] font-black uppercase text-white">{pkg.label}</p>
-                                    <p className="text-[9px] text-slate-500 italic">Spar opptil 40%</p>
+                                    <p className="text-[9px] text-slate-500 italic">Betal sikkert med kort</p>
                                 </div>
                                 <div className="text-right flex items-center gap-3">
                                     <span className="text-lg font-serif text-amber-500">{pkg.price}</span>
@@ -180,7 +198,6 @@ const Settings: React.FC = () => {
             </section>
         </div>
 
-        {/* Reports Archive */}
         <div className="lg:col-span-8 space-y-8">
             <section className="bg-white/[0.02] border border-white/5 p-10 rounded-[4rem] shadow-2xl min-h-[600px] flex flex-col">
                 <div className="flex items-center justify-between mb-12 border-b border-white/5 pb-8">
