@@ -39,6 +39,7 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
@@ -50,14 +51,22 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
   }, []);
 
   const saveSoulData = () => {
-    if (!soulData.name || !soulData.date || !soulData.location) {
-      alert("Navn, fødselsdato og fødested er påkrevd for å åpne arkivene.");
+    const newErrors: Record<string, boolean> = {};
+    if (!soulData.name) newErrors.name = true;
+    if (!soulData.date) newErrors.date = true;
+    if (!soulData.location) newErrors.location = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      alert("Noen av de kosmiske koordinatene mangler. Vennligst fyll ut de uthevede feltene.");
       return;
     }
+
+    setErrors({});
     setIsSaving(true);
     localStorage.setItem('soul_name', soulData.name);
     localStorage.setItem('soul_date', soulData.date);
-    localStorage.setItem('soul_time', soulData.time);
+    localStorage.setItem('soul_time', soulData.time || '12:00');
     localStorage.setItem('soul_location', soulData.location);
     localStorage.setItem('soul_houses', soulData.houseSystem);
     
@@ -67,7 +76,7 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
     if (email === 'freddy.bremseth@gmail.com' || soulData.name.toLowerCase().includes('freddy')) {
         localStorage.setItem('tarot_credits', '200000');
         localStorage.setItem('soul_subscription', 'Master');
-    } else if (email === 'anna@donaanna.com' || soulData.name.toLowerCase().includes('anna')) {
+    } else if (email.includes('anna@do') || soulData.name.toLowerCase().includes('anna')) {
         localStorage.setItem('tarot_credits', '100000');
         localStorage.setItem('soul_subscription', 'Single');
     }
@@ -75,6 +84,7 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
     setTimeout(() => {
         setIsSaving(false);
         setShowSuccess(true);
+        window.dispatchEvent(new Event('storage')); // Send event så App.tsx plukker det opp
         if (onUpdate) {
             onUpdate(); 
         }
@@ -162,26 +172,27 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
             <div className="space-y-8">
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
-                   <User size={14} /> Sjelens Navn
+                   <User size={14} /> Sjelens Navn {errors.name && <span className="text-red-500 italic ml-2">Påkrevd</span>}
                 </h4>
-                <input type="text" value={soulData.name} onChange={e => setSoulData({...soulData, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all" placeholder="Ditt fødselsnavn..." />
+                <input type="text" value={soulData.name} onChange={e => setSoulData({...soulData, name: e.target.value})} className={`w-full bg-black/40 border ${errors.name ? 'border-red-500' : 'border-white/10'} rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all`} placeholder="Ditt fødselsnavn..." />
               </div>
 
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
-                   <Calendar size={14} /> Fødselstid
+                   <Calendar size={14} /> Fødselstid og Dato {errors.date && <span className="text-red-500 italic ml-2">Dato er påkrevd</span>}
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <input type="date" value={soulData.date} onChange={e => setSoulData({...soulData, date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none" />
+                    <input type="date" value={soulData.date} onChange={e => setSoulData({...soulData, date: e.target.value})} className={`w-full bg-black/40 border ${errors.date ? 'border-red-500' : 'border-white/10'} rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none`} />
                     <input type="time" value={soulData.time} onChange={e => setSoulData({...soulData, time: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none" />
                 </div>
+                <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest ml-1">Klokkeslett er viktig for nøyaktig Ascendant-kalkulering.</p>
               </div>
 
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
-                   <MapPin size={14} /> Fødested
+                   <MapPin size={14} /> Fødested {errors.location && <span className="text-red-500 italic ml-2">Påkrevd</span>}
                 </h4>
-                <input type="text" value={soulData.location} onChange={e => setSoulData({...soulData, location: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all" placeholder="f.eks. Oslo, Norge" />
+                <input type="text" value={soulData.location} onChange={e => setSoulData({...soulData, location: e.target.value})} className={`w-full bg-black/40 border ${errors.location ? 'border-red-500' : 'border-white/10'} rounded-2xl p-5 text-sm text-white focus:border-amber-500 outline-none transition-all`} placeholder="f.eks. Oslo, Norge" />
               </div>
 
               <button onClick={saveSoulData} disabled={isSaving} className="w-full py-6 bg-amber-500 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] text-black hover:bg-amber-400 transition-all shadow-2xl flex items-center justify-center gap-3">

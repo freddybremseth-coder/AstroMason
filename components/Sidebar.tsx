@@ -31,12 +31,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.navDashboard, icon: LayoutDashboard },
     { id: 'profile', label: t.navProfile, icon: UserCircle },
-    { id: 'horoscope', label: t.navHoroscope, icon: Calendar },
     { id: 'astrology', label: t.navAstrology, icon: Sun },
-    { id: 'tools', label: 'Verktøy', icon: Zap },
     { id: 'chinese', label: t.navChineseAstrology, icon: Star },
     { id: 'numerology', label: t.navNumerology, icon: Fingerprint },
     { id: 'tarot', label: t.navTarot, icon: Sparkles },
+    { id: 'tools', label: 'Verktøy', icon: Zap },
     { id: 'settings', label: t.navSettings, icon: SettingsIcon },
   ];
 

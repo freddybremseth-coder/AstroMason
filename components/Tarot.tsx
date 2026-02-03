@@ -102,7 +102,7 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
             return;
         }
 
-        setSelectedSpread(SPREADS[0]); // 1 card spread
+        setSelectedSpread(SPREADS[0]); 
         setUserContext("Dagens energi og veiledning");
         setIsShuffling(true);
         setReport('');
@@ -179,29 +179,15 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
 
     return (
         <div className="max-w-7xl mx-auto py-12 px-6 animate-fade-in space-y-12 pb-32">
-            {/* Main Header */}
-            <header className="flex flex-col md:flex-row justify-between items-center gap-8 bg-indigo-950/20 backdrop-blur-xl p-10 rounded-[3.5rem] border border-white/5 shadow-2xl">
-                <div className="space-y-4 text-center md:text-left">
+            <header className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
+                <div className="space-y-2 text-center md:text-left">
                     <h2 className="text-5xl font-serif font-bold text-white flex items-center justify-center md:justify-start gap-4">
                         <Sparkles className="text-amber-400" /> Tarot-Syntese
                     </h2>
                     <p className="text-indigo-300 text-[11px] uppercase tracking-[0.4em] font-black italic">Speilet av din underbevissthet</p>
                 </div>
-                
-                <div onClick={onNavigateToSettings} className="flex items-center gap-6 bg-[#050511]/60 px-8 py-5 rounded-[2.5rem] border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer group no-print">
-                    <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Status</p>
-                        <p className="text-xl font-serif text-amber-100">
-                            {localStorage.getItem('soul_subscription') === 'Master' ? 'Master' : `${credits} Kreditter`}
-                        </p>
-                    </div>
-                    <div className="p-4 bg-amber-500 rounded-2xl text-black shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
-                        <Wallet size={24} />
-                    </div>
-                </div>
             </header>
 
-            {/* Daily Tarot Hero Section */}
             {!report && cards.length === 0 && (
                 <section className="bg-gradient-to-r from-amber-900/20 to-indigo-900/20 border border-amber-500/10 p-10 rounded-[3.5rem] flex flex-col md:flex-row items-center justify-between gap-10 animate-fade-in no-print">
                     <div className="space-y-4 max-w-xl text-center md:text-left">

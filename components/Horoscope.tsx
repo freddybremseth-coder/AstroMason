@@ -32,7 +32,6 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
     const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
     const COST = 1;
 
-    // Sjekk om brukeren har råd
     if (sub !== 'Master' && credits < COST) {
         setShowDemo(true);
         setReport(null);
@@ -45,7 +44,6 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
     try {
       const text = await AstrologyService.generatePersonalizedHoroscope(natalChart, selectedPeriod, lang);
       
-      // Trekk kreditt
       if (sub !== 'Master') {
           const newCredits = credits - COST;
           localStorage.setItem('tarot_credits', newCredits.toString());
@@ -60,38 +58,12 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
     }
   };
 
-  useEffect(() => {
-    if (natalChart) {
-      // Vi trigger ikke automatisk fetch for å spare penger, brukeren må klikke?
-      // Eller vi sjekker kreditter først.
-    }
-  }, [natalChart]);
-
   const handleGenerate = () => {
       fetchHoroscope(period);
   };
 
-  if (!natalChart) {
-    return (
-      <div className="max-w-xl mx-auto py-24 text-center space-y-8 animate-fade-in">
-        <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/10 opacity-20">
-            <Fingerprint size={48} />
-        </div>
-        <div className="space-y-2">
-            <h2 className="text-3xl font-serif text-white">Identitet mangler</h2>
-            <p className="text-slate-500 font-light">Du må beregne ditt fødselshoroskop i Astrologi-fanen før AstroMason kan lese dine transitter.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-12 animate-fade-in pb-32">
-      <header className="text-center space-y-4">
-        <h2 className="text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500">{t.horoscopeTitle}</h2>
-        <p className="text-slate-500 text-xs uppercase tracking-[0.5em] font-black">{t.horoscopeSubtitle}</p>
-      </header>
-
+    <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
       <div className="flex flex-col items-center gap-8 no-print">
         <div className="flex flex-wrap justify-center gap-3">
             {periods.map(p => (

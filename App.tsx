@@ -26,6 +26,7 @@ export default function AstroMasonApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [astrologySubTab, setAstrologySubTab] = useState<'chart' | 'horoscope' | 'livsbok'>('chart');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [natalChart, setNatalChart] = useState<CalculatedChart | null>(null);
@@ -37,7 +38,6 @@ export default function AstroMasonApp() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [loadingText, setLoadingText] = useState('Konsulterer arkivene...');
   const [reportData, setReportData] = useState<any>(null);
-  const [subMode, setSubMode] = useState<string>('natal');
   const [astrologyMode, setAstrologyMode] = useState<AstrologyMode>('esoteric');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [selectedPlanet, setSelectedPlanet] = useState<PlanetPosition | null>(null);
@@ -46,6 +46,36 @@ export default function AstroMasonApp() {
   const [subscription, setSubscription] = useState<string>('None');
 
   const t = UI_TRANSLATIONS[lang];
+
+  const refreshNatalData = async (silent = false) => {
+    const savedName = localStorage.getItem('soul_name');
+    const savedDate = localStorage.getItem('soul_date');
+    
+    if (!savedName || !savedDate) {
+        setIsInitialLoading(false);
+        setIsVerifying(false);
+        return;
+    }
+
+    if (!silent) setIsVerifying(true);
+    try {
+      const birthData = {
+          name: savedName,
+          date: savedDate,
+          time: localStorage.getItem('soul_time') || '12:00',
+          location: localStorage.getItem('soul_location') || 'Oslo, Norge',
+          houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
+      };
+      const chart = await AstrologyService.calculateChart(birthData, astrologyMode);
+      setNatalChart(chart);
+      setActiveChart(chart);
+    } catch (e) {
+      console.error("Klarte ikke å laste kartdata", e);
+    } finally {
+      setIsInitialLoading(false);
+      setIsVerifying(false);
+    }
+  };
 
   useEffect(() => {
     const updateStats = () => {
@@ -63,6 +93,14 @@ export default function AstroMasonApp() {
     window.addEventListener('storage', updateStats);
     window.addEventListener('navigate', handleNavigate as any);
     
+    const email = localStorage.getItem('soul_email');
+    if (email) {
+        setIsAuthenticated(true);
+        refreshNatalData(true);
+    } else {
+        setIsInitialLoading(false);
+    }
+
     const interval = setInterval(updateStats, 2000);
     return () => {
       window.removeEventListener('storage', updateStats);
@@ -80,6 +118,8 @@ export default function AstroMasonApp() {
     const hasDate = localStorage.getItem('soul_date');
     const isProfileComplete = hasName && hasDate;
 
+    refreshNatalData(true);
+
     if (userData.isAdmin) {
       setActiveTab('crm');
     } else if (!isProfileComplete) {
@@ -89,35 +129,13 @@ export default function AstroMasonApp() {
     }
   };
 
-  const refreshNatalData = async (silent = false) => {
-    if (!silent) setIsVerifying(true);
-    try {
-      const savedName = localStorage.getItem('soul_name');
-      if (savedName) {
-        const birthData = {
-            name: savedName,
-            date: localStorage.getItem('soul_date') || '',
-            time: localStorage.getItem('soul_time') || '',
-            location: localStorage.getItem('soul_location') || '',
-            houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
-        };
-        if (birthData.name && birthData.date) {
-            const chart = await AstrologyService.calculateChart(birthData, astrologyMode);
-            setNatalChart(chart);
-            setActiveChart(chart);
-        }
-      }
-    } catch (e) {
-      console.error("Klarte ikke å laste kartdata", e);
-    } finally {
-      setIsInitialLoading(false);
-      setIsVerifying(false);
+  useEffect(() => { 
+    if (isAuthenticated) {
+        refreshNatalData(true); 
     }
-  };
+  }, [astrologyMode, isAuthenticated]);
 
-  useEffect(() => { refreshNatalData(true); }, [astrologyMode]);
-
-  const generateReport = async (type: string) => {
+  const generateReport = async () => {
     const sub = localStorage.getItem('soul_subscription');
     const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
     const cost = 5;
@@ -136,7 +154,7 @@ export default function AstroMasonApp() {
     try {
       const data = await AstrologyService.generateAIReport(
         activeChart || natalChart!,
-        type,
+        'natal',
         astrologyMode,
         lang,
         natalChart || undefined
@@ -169,7 +187,6 @@ export default function AstroMasonApp() {
     <ThemeContext.Provider value={{ theme, setTheme }}>
       <div className={`min-h-screen flex flex-col lg:flex-row ${theme === 'dark' ? 'bg-[#050511] text-white' : 'bg-slate-50 text-slate-900'} selection:bg-indigo-500/30 font-sans`}>
         
-        {/* Mobile Top Bar */}
         <header className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-[#0a0a16]/90 backdrop-blur-lg border-b border-white/5 z-40 flex items-center justify-between px-6 py-2">
           <div className="flex-1"></div>
           <div className="flex-1 flex justify-center">
@@ -191,7 +208,6 @@ export default function AstroMasonApp() {
             setShowReport(false); 
             setSelectedPlanet(null); 
             setActiveTab(v); 
-            if(v === 'astrology') refreshNatalData(); 
           }} 
           isMobileOpen={isMobileMenuOpen} 
           setIsMobileOpen={setIsMobileMenuOpen} 
@@ -199,12 +215,13 @@ export default function AstroMasonApp() {
             localStorage.clear(); 
             setIsAuthenticated(false); 
             setIsAdmin(false); 
+            setNatalChart(null);
+            setActiveChart(null);
           }}
           isAdmin={isAdmin}
         />
 
         <main className="flex-1 overflow-y-auto p-6 md:p-12 mt-20 lg:mt-0">
-          {/* Header Status Bar */}
           <div className="max-w-7xl mx-auto mb-12 no-print flex justify-end">
               <div onClick={() => setActiveTab('settings')} className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-2xl cursor-pointer hover:border-amber-500/30 transition-all group">
                   <div className="text-right">
@@ -232,56 +249,128 @@ export default function AstroMasonApp() {
           ) : (
             <div className="max-w-7xl mx-auto">
               {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
-              {activeTab === 'horoscope' && <Horoscope natalChart={natalChart} />}
               {activeTab === 'chinese' && <ChineseAstrology />}
               {activeTab === 'profile' && <Profile onUpdate={() => { refreshNatalData(true); setActiveTab('dashboard'); }} />}
               {activeTab === 'tarot' && <Tarot onNavigateToSettings={() => setActiveTab('settings')} />}
               {activeTab === 'numerology' && <Numerology />}
               {activeTab === 'crm' && isAdmin && <AdminCRM />}
               {activeTab === 'settings' && <Settings />}
+              {activeTab === 'tools' && <Tools onNavigateToSettings={() => setActiveTab('settings')} />}
               
-              {activeTab === 'astrology' && natalChart && !showReport && (
+              {activeTab === 'astrology' && (
+                !natalChart ? (
+                   <div className="max-w-xl mx-auto py-24 text-center space-y-8 animate-fade-in">
+                    <div className="w-24 h-24 bg-amber-500/5 rounded-full flex items-center justify-center mx-auto border border-amber-500/20 text-amber-500">
+                        <Calendar size={48} />
+                    </div>
+                    <div className="space-y-4">
+                        <h2 className="text-3xl font-serif text-white italic">Fødselstid og dato mangler</h2>
+                        <p className="text-slate-400 font-light leading-relaxed">For å se ditt stjernekart og personlige horoskop trenger AstroMason nøyaktig informasjon om din inkarnasjon.</p>
+                        <button onClick={() => setActiveTab('profile')} className="px-10 py-4 bg-amber-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-amber-400 transition-all shadow-xl shadow-amber-500/20">
+                            Oppdater Sjelsprofil Nå
+                        </button>
+                    </div>
+                  </div>
+                ) : (
                 <div className="space-y-12">
-                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                      <div className="lg:col-span-7">
-                         <div className="bg-white/5 p-6 md:p-12 rounded-[2.5rem] md:rounded-[4rem] border border-white/10 chart-to-print shadow-2xl">
-                            {activeChart && (
-                                <ChartWheel positions={activeChart.positions} ascendantDegree={activeChart.ascendantDegree} houses={activeChart.houseCusps} aspects={activeChart.aspects} onPlanetClick={setSelectedPlanet} />
-                            )}
-                         </div>
+                   <header className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+                      <div className="text-center md:text-left">
+                          <h2 className="text-5xl font-serif font-bold text-white">Astrologi Hub</h2>
+                          <p className="text-slate-500 text-xs uppercase tracking-[0.4em] font-black">Ditt kosmiske kompass</p>
                       </div>
-                      <div className="lg:col-span-5 flex flex-col justify-center space-y-8">
-                         <div className="bg-indigo-900/10 p-10 rounded-[3rem] border border-indigo-500/20 space-y-4">
-                            <div className="flex justify-between items-start">
-                                <h3 className="font-serif text-3xl text-white">Din Sjels Kronike</h3>
-                                <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500"><Scroll size={24} /></div>
-                            </div>
-                            <p className="text-slate-400 text-sm font-light leading-relaxed">
-                                En dyptgående analyse på 4000+ ord som dechiffrerer din sjel, dine karmiske bånd og ditt fulle potensial.
-                            </p>
-                            <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-                                <span className="text-[10px] uppercase font-black tracking-widest text-indigo-400">Pris for analyse</span>
-                                <span className="text-xl font-serif text-amber-500">5 Kreditter</span>
-                            </div>
-                         </div>
-                         
-                         <div className="space-y-4">
-                             {subscription !== 'Master' && userCredits < 5 ? (
-                                <button onClick={() => setActiveTab('settings')} className="w-full py-8 bg-white/5 border border-white/10 rounded-[2.5rem] font-black uppercase text-xs text-white hover:bg-white/10 transition-all flex items-center justify-center gap-3">
-                                   <Wallet size={20} className="text-amber-500" /> Kjøp Kreditter for å Skrive
-                                </button>
-                             ) : (
-                                <button onClick={() => generateReport(subMode)} className="w-full py-8 bg-gradient-to-r from-amber-400 to-amber-600 rounded-[2.5rem] font-black uppercase text-xs text-black shadow-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
-                                   <Scroll size={20} /> Skriv Min Livsbok Nå
-                                </button>
-                             )}
-                             <p className="text-center text-[9px] text-slate-500 uppercase tracking-widest font-black">
-                                Analysen tar ca. 20-30 sekunder å generere
-                             </p>
-                         </div>
+                      <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10 no-print">
+                         {[
+                             { id: 'chart', label: 'Stjernekart', icon: Sun },
+                             { id: 'horoscope', label: 'Horoskop', icon: Calendar },
+                             { id: 'livsbok', label: 'Livsboken', icon: Scroll }
+                         ].map(tab => (
+                             <button key={tab.id} onClick={() => { setAstrologySubTab(tab.id as any); setShowReport(false); }} className={`px-6 py-3 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${astrologySubTab === tab.id ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>
+                                 <tab.icon size={14} /> {tab.label}
+                             </button>
+                         ))}
                       </div>
-                   </div>
+                   </header>
+
+                   {astrologySubTab === 'chart' && (
+                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-fade-in">
+                        <div className="lg:col-span-7">
+                           <div className="bg-white/5 p-6 md:p-12 rounded-[2.5rem] md:rounded-[4rem] border border-white/10 chart-to-print shadow-2xl">
+                              {activeChart && (
+                                  <ChartWheel positions={activeChart.positions} ascendantDegree={activeChart.ascendantDegree} houses={activeChart.houseCusps} aspects={activeChart.aspects} onPlanetClick={setSelectedPlanet} />
+                              )}
+                           </div>
+                        </div>
+                        <div className="lg:col-span-5 space-y-6">
+                            <div className="bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem] space-y-4">
+                                <h3 className="font-serif text-2xl text-amber-100 italic">Planetariske Posisjoner</h3>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {activeChart?.positions.map((p, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 group hover:border-amber-500/30 transition-all">
+                                            <span className="flex items-center gap-3">
+                                                <span className="text-xl text-amber-500">{p.symbol}</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-slate-300">{p.name}</span>
+                                            </span>
+                                            <span className="text-xs text-slate-400 font-light">{p.degree}° {p.sign}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                     </div>
+                   )}
+
+                   {astrologySubTab === 'horoscope' && <Horoscope natalChart={natalChart} />}
+
+                   {astrologySubTab === 'livsbok' && (
+                     <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
+                        {!showReport ? (
+                            <div className="bg-indigo-900/10 p-12 md:p-24 rounded-[4rem] border border-indigo-500/20 text-center space-y-8 shadow-2xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                                    <Scroll size={300} />
+                                </div>
+                                <div className="space-y-4 max-w-2xl mx-auto relative z-10">
+                                    <h3 className="text-5xl font-serif text-white">Din Sjels Kronike</h3>
+                                    <p className="text-slate-400 text-lg font-light leading-relaxed">
+                                        En dyptgående AI-analyse på 4000+ ord som dechiffrerer din sjel, dine karmiske bånd og ditt fulle potensial i denne inkarnasjonen.
+                                    </p>
+                                </div>
+                                <div className="pt-8 flex flex-col items-center gap-6 relative z-10">
+                                    <button onClick={generateReport} className="px-16 py-6 bg-gradient-to-r from-amber-400 to-amber-600 rounded-[2.5rem] font-black uppercase text-xs text-black shadow-2xl hover:scale-[1.05] transition-all flex items-center justify-center gap-4">
+                                        <Scroll size={22} /> Skriv Min Livsbok Nå
+                                    </button>
+                                    <p className="text-[10px] uppercase font-black tracking-[0.3em] text-indigo-400">Pris: 5 Kreditter • 4000+ Ord</p>
+                                </div>
+                            </div>
+                        ) : reportData && (
+                            <div className="bg-[#0a0a1a] p-6 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden animate-slide-up">
+                                <button onClick={() => setShowReport(false)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
+                                <X size={20} />
+                                </button>
+                                <header className="text-center space-y-4 mb-16">
+                                <h1 className="text-4xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
+                                    {reportData.title}
+                                </h1>
+                                </header>
+                                <article className="prose prose-invert prose-lg md:prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
+                                <div className="first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left mb-12">
+                                    {reportData.essenceSummary}
+                                </div>
+                                {reportData.planetChapters?.map((chapter: any, i: number) => (
+                                    <div key={i} className="mb-12 border-t border-white/5 pt-12">
+                                    <h3 className="text-3xl font-serif text-amber-100 mb-6 uppercase tracking-widest">{chapter.planet}</h3>
+                                    <div className="text-slate-400 font-light leading-relaxed">{chapter.content}</div>
+                                    </div>
+                                ))}
+                                <div className="mt-12 pt-12 border-t border-white/5 italic text-amber-500/80 text-center text-2xl md:text-4xl font-serif">
+                                    {reportData.mantra}
+                                </div>
+                                </article>
+                            </div>
+                        )}
+                     </div>
+                   )}
                 </div>
+                )
               )}
 
               {isLoading && (
@@ -299,36 +388,6 @@ export default function AstroMasonApp() {
                    </div>
                 </div>
               )}
-
-              {activeTab === 'astrology' && showReport && reportData && (
-                <div className="max-w-4xl mx-auto py-12 animate-fade-in space-y-12 pb-32">
-                  <div className="bg-[#0a0a1a] p-6 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
-                    <button onClick={() => setShowReport(false)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
-                      <X size={20} />
-                    </button>
-                    <header className="text-center space-y-4 mb-16">
-                      <h1 className="text-4xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
-                        {reportData.title}
-                      </h1>
-                    </header>
-                    <article className="prose prose-invert prose-lg md:prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
-                      <div className="first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left mb-12">
-                        {reportData.essenceSummary}
-                      </div>
-                      {reportData.planetChapters?.map((chapter: any, i: number) => (
-                        <div key={i} className="mb-12">
-                          <h3 className="text-2xl font-serif text-amber-100 mb-4">{chapter.planet}</h3>
-                          <div className="text-slate-400 font-light">{chapter.content}</div>
-                        </div>
-                      ))}
-                      <div className="mt-12 pt-12 border-t border-white/5 italic text-amber-500/80 text-center text-2xl md:text-3xl font-serif">
-                        {reportData.mantra}
-                      </div>
-                    </article>
-                  </div>
-                </div>
-              )}
-              {activeTab === 'tools' && <Tools onNavigateToSettings={() => setActiveTab('settings')} />}
             </div>
           )}
         </main>
