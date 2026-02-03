@@ -326,6 +326,63 @@ export const AstrologyService = {
     }
   },
 
+  generateWeeklyTransitDeepDive: async (natalChart: CalculatedChart, lang: Language) => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const astro = window.Astronomy;
+    const now = new Date();
+    const in7Days = new Date();
+    in7Days.setDate(now.getDate() + 7);
+
+    const bodies = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+    
+    const getPositionsForDate = (date: Date) => {
+        const time = astro.MakeTime(date);
+        return bodies.map(b => {
+            const vector = astro.GeoVector(astro.Body[b], time, true);
+            const ecl = astro.Ecliptic(vector);
+            const d = getZodiacDetails(ecl.elon, false);
+            return `${PLANET_MAP[b]}: ${d.sign} ${d.degree}°`;
+        }).join(', ');
+    };
+
+    const transitStart = getPositionsForDate(now);
+    const transitEnd = getPositionsForDate(in7Days);
+    const natalContext = natalChart.positions.map(p => `- Natal ${p.name}: ${p.sign} ${p.degree}° (Hus ${p.house})`).join('\n');
+
+    const languageNames: Record<Language, string> = { no: 'NORWEGIAN', en: 'ENGLISH', es: 'SPANISH', de: 'GERMAN', fr: 'FRENCH', it: 'ITALIAN', ru: 'RUSSIAN', pl: 'POLISH' };
+    const targetLang = languageNames[lang] || 'ENGLISH';
+
+    const systemInstruction = `ROLLE: AstroMason - The Deep Chronicler.
+    MÅL: Produser en eksepsjonelt dyp 7-dagers transit-prognose på ${targetLang}.
+    STRUKTUR:
+    1. Oversikt over ukens kosmiske vær.
+    2. Dag-for-dag dypdykk (7 dager).
+    3. Viktige aspekter som dannes mot klientens natal-kart.
+    4. Sjelens veikart for denne uken.
+    REGLER: Aldri oppsummer. Gå i dybden på psykologisk og esoterisk betydning.`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents: `Klient: ${natalChart.clientName}. 
+        PERIODE: De neste 7 dagene fra ${now.toLocaleDateString()}.
+        TRANSIT START: ${transitStart}
+        TRANSIT SLUTT (om 7 dager): ${transitEnd}
+        NATAL KART:
+        ${natalContext}`,
+        config: { 
+          systemInstruction,
+          maxOutputTokens: 5000,
+          thinkingConfig: { thinkingBudget: 2000 }
+        }
+      });
+      return response.text;
+    } catch (e) {
+      console.error(e);
+      throw new Error("Kunne ikke koble til stjernearkivene.");
+    }
+  },
+
   generateTarotReport: async (cards: any[], spread: any, style: string, mode: string, clientData: any, userContext: string, lang: Language) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = generateCustomTarotPrompt(style, spread.name, userContext || "Generell veiledning");

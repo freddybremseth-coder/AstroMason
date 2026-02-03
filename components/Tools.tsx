@@ -2,13 +2,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AstrologyService } from '../services/astrology';
 import { CalculatedChart } from '../types';
-import { MapPin, Users, Activity, Sparkles, Loader2, Calendar, ArrowRight, Save, Download } from './Icons';
+import { MapPin, Users, Activity, Sparkles, Loader2, Calendar, ArrowRight, Save, Download, Clock } from './Icons';
 import { LangContext } from '../App';
 
 export default function AdvancedTools() {
   const [mode, setMode] = useState<'relocation' | 'relationship' | 'transit'>('relocation');
   const [chartA, setChartA] = useState<CalculatedChart | null>(null);
-  const [chartB, setChartB] = useState<CalculatedChart | null>(null);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState('');
   const { lang } = useContext(LangContext);
@@ -18,15 +17,17 @@ export default function AdvancedTools() {
 
   // Load latest chart on mount to ensure we have a base to work from
   useEffect(() => {
-    const saved = localStorage.getItem('astroMasonCharts');
-    if (saved) {
-      try {
-        const charts = JSON.parse(saved);
-        if (charts && charts.length > 0) {
-          setChartA(charts[0]);
-        }
-      } catch (e) {
-        console.error("Failed to load charts for Tools", e);
+    const savedName = localStorage.getItem('soul_name');
+    if (savedName) {
+      const birthData = {
+          name: savedName,
+          date: localStorage.getItem('soul_date') || '',
+          time: localStorage.getItem('soul_time') || '',
+          location: localStorage.getItem('soul_location') || '',
+          houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
+      };
+      if (birthData.name && birthData.date) {
+          AstrologyService.calculateChart(birthData).then(setChartA);
       }
     }
   }, []);
@@ -48,7 +49,6 @@ export default function AdvancedTools() {
         location: newLocation, 
         houseSystem: 'Whole Sign'
       });
-      // Fixed: Added lang as the third argument to generateDeepChronicle
       const text = await AstrologyService.generateDeepChronicle(relocated, 'relocation', lang);
       setReport(text);
     } catch (error) {
@@ -58,16 +58,21 @@ export default function AdvancedTools() {
     }
   };
 
-  const handleRelationship = async (p2Data: any) => {
-    if (!chartA) return;
+  const handleWeeklyTransit = async () => {
+    if (!chartA) {
+      alert("Vennligst fullfør din sjelsprofil først.");
+      return;
+    }
     setLoading(true);
     setReport('');
     try {
-      // For demo purposes, we'd normally get this from a form
-      // This is a placeholder for the relationship logic requested
-      const text = "Relasjonsanalysen krever partnerdata. Vennligst bruk relasjonsmodusen i hovedoversikten for fullstendig analyse.";
+      const text = await AstrologyService.generateWeeklyTransitDeepDive(chartA, lang);
       setReport(text);
-    } finally { setLoading(false); }
+    } catch (e) {
+      setReport("De kosmiske arkivene er midlertidig utilgjengelige.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -144,16 +149,25 @@ export default function AdvancedTools() {
 
           {mode === 'transit' && (
             <div className="space-y-6">
-              <div className="p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-[2rem] space-y-3">
+              <div className="p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-[2rem] space-y-4">
                 <div className="flex items-center gap-2">
-                    <Activity size={16} className="text-amber-400" />
-                    <p className="text-sm font-bold text-indigo-200 uppercase tracking-wider">Aktuell Transit</p>
+                    <Clock size={16} className="text-amber-400" />
+                    <p className="text-sm font-bold text-indigo-200 uppercase tracking-wider">7-Dagers Prognose</p>
                 </div>
-                <p className="text-sm text-slate-300 font-light">Saturn er i ditt 7. hus (Relasjoner)</p>
-                <p className="text-[10px] text-indigo-400 uppercase font-black">Varighet: 2025 - 2027</p>
+                <p className="text-xs text-slate-300 font-light leading-relaxed">
+                  Få et detaljert dypdykk i ukens planetbevegelser og hvordan de samhandler med ditt unike kosmiske avtrykk.
+                </p>
+                <div className="text-[10px] text-indigo-400 uppercase font-black">
+                  Fokus: Psykologisk dybde & esoterisk vekst
+                </div>
               </div>
-              <button className="w-full py-5 bg-[#151535] border border-white/5 hover:border-amber-500/30 text-amber-200 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all">
-                <Activity size={16} /> Dykk dypere i transitter
+              <button 
+                onClick={handleWeeklyTransit}
+                disabled={loading || !chartA}
+                className="w-full py-5 bg-[#151535] border border-white/5 hover:border-amber-500/30 text-amber-200 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all disabled:opacity-30"
+              >
+                {loading ? <Loader2 className="animate-spin" size={16} /> : <Activity size={16} />}
+                Generer 7-Dagers Prognose
               </button>
             </div>
           )}
@@ -168,17 +182,17 @@ export default function AdvancedTools() {
               </div>
               <div className="text-center space-y-2">
                 <h4 className="text-amber-100 font-serif text-2xl">AstroMason skriver din "Livsbok"</h4>
-                <p className="text-slate-500 text-xs uppercase tracking-[0.4em] font-bold">Kalkulerer nye hus-cusper...</p>
+                <p className="text-slate-500 text-xs uppercase tracking-[0.4em] font-bold">Analyserer kosmiske strømninger...</p>
               </div>
             </div>
           ) : report ? (
             <div className="bg-[#0a0a1a] p-10 md:p-14 rounded-[3.5rem] border border-white/5 shadow-2xl h-full max-h-[700px] overflow-y-auto custom-scrollbar group relative">
-              <div className="absolute top-8 right-10 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-8 right-10 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity no-print">
                 <button className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-all"><Download size={18} /></button>
-                <button className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-all"><Save size={18} /></button>
+                <button className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-all" onClick={() => window.print()}><Save size={18} /></button>
               </div>
-              <article className="prose prose-invert prose-lg max-w-none prose-headings:font-serif prose-headings:text-amber-100 prose-p:text-slate-300 prose-p:font-light prose-p:leading-[1.8]">
-                <div className="whitespace-pre-wrap font-sans">
+              <article className="prose prose-invert prose-lg max-w-none prose-headings:font-serif prose-headings:text-amber-100 prose-p:text-slate-300 prose-p:font-light prose-p:leading-[1.8] whitespace-pre-wrap">
+                <div className="font-sans">
                   {report}
                 </div>
               </article>

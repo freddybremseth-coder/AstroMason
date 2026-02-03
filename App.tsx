@@ -10,6 +10,7 @@ import Profile from './components/Profile';
 import Horoscope from './components/Horoscope';
 import ChineseAstrology from './components/ChineseAstrology';
 import LandingPage from './components/LandingPage';
+import AdminCRM from './components/AdminCRM';
 import { AstrologyService } from './services/astrology';
 import { CalculatedChart, Language, PlanetPosition, AstrologyMode } from './types';
 import { UI_TRANSLATIONS } from './constants';
@@ -33,11 +34,10 @@ const ANALYSIS_OPTIONS = [
 export default function AstroMasonApp() {
   const [lang, setLang] = useState<Language>('no');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [natalChart, setNatalChart] = useState<CalculatedChart | null>(null);
   const [activeChart, setActiveChart] = useState<CalculatedChart | null>(null);
-  const [relocatedChart, setRelocatedChart] = useState<CalculatedChart | null>(null);
-  const [transitChart, setTransitChart] = useState<CalculatedChart | null>(null);
   
   const [showReport, setShowReport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,36 +56,13 @@ export default function AstroMasonApp() {
 
   const t = UI_TRANSLATIONS[lang];
 
-  const generateReport = async (type: string) => {
-    if (!activeChart) return;
-    setIsLoading(true);
-    setLoadingText('AstroMason dechiffrerer din sjel...');
-    try {
-      const data = await AstrologyService.generateAIReport(
-        activeChart,
-        type,
-        astrologyMode,
-        lang,
-        natalChart || undefined
-      );
-      setReportData(data);
-      setShowReport(true);
-      
-      const saved = JSON.parse(localStorage.getItem('astromason_reports') || '[]');
-      const newEntry = {
-        id: Date.now().toString(),
-        title: data.title || `Kronike: ${type}`,
-        date: new Date().toISOString(),
-        type: 'Astrologi',
-        content: JSON.stringify(data)
-      };
-      localStorage.setItem('astromason_reports', JSON.stringify([newEntry, ...saved]));
-    } catch (e) {
-      console.error(e);
-      alert("Kunne ikke koble til de dype arkivene akkurat nå.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleLogin = (userData: { email: string; isAdmin: boolean }) => {
+    setIsAuthenticated(true);
+    setIsAdmin(userData.isAdmin);
+    const hasData = localStorage.getItem('soul_name');
+    if (userData.isAdmin) setActiveTab('crm');
+    else if (!hasData) setActiveTab('profile');
+    else setActiveTab('dashboard');
   };
 
   const refreshNatalData = async (silent = false) => {
@@ -129,23 +106,32 @@ export default function AstroMasonApp() {
 
   useEffect(() => { refreshNatalData(true); }, [astrologyMode]);
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    const hasData = localStorage.getItem('soul_name');
-    if (!hasData) setActiveTab('profile');
-    else setActiveTab('dashboard');
+  const generateReport = async (type: string) => {
+    if (!activeChart) return;
+    setIsLoading(true);
+    setLoadingText('AstroMason dechiffrerer din sjel...');
+    try {
+      const data = await AstrologyService.generateAIReport(
+        activeChart,
+        type,
+        astrologyMode,
+        lang,
+        natalChart || undefined
+      );
+      setReportData(data);
+      setShowReport(true);
+    } catch (e) {
+      console.error(e);
+      alert("Kunne ikke koble til de dype arkivene akkurat nå.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const calculateTransitsForDate = async (dateStr: string) => {
     if (!natalChart) return;
     setIsCalculatingTransit(true);
     try {
-      const birthDate = new Date(natalChart.date);
-      const targetDate = new Date(dateStr);
-      const age = targetDate.getFullYear() - birthDate.getFullYear();
-      setTransitAge(Math.max(0, age));
-
-      // VIKTIG: Send med koordinatene fra natalChart for å slippe AI-geokoding
       const transitData = await AstrologyService.calculateChart({
         name: `Livsløp: ${dateStr}`,
         date: dateStr,
@@ -154,7 +140,6 @@ export default function AstroMasonApp() {
         houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
       }, astrologyMode, natalChart.coords);
       
-      setTransitChart(transitData);
       setActiveChart(transitData);
     } catch (e) {
       console.error("Transit calculation failed", e);
@@ -199,7 +184,8 @@ export default function AstroMasonApp() {
           }} 
           isMobileOpen={false} 
           setIsMobileOpen={() => {}} 
-          onLogout={() => setIsAuthenticated(false)} 
+          onLogout={() => { setIsAuthenticated(false); setIsAdmin(false); }}
+          isAdmin={isAdmin}
         />
 
         <main className="flex-1 overflow-y-auto p-6 md:p-12">
@@ -222,6 +208,7 @@ export default function AstroMasonApp() {
               {activeTab === 'profile' && <Profile onUpdate={() => refreshNatalData(true)} />}
               {activeTab === 'tarot' && <Tarot />}
               {activeTab === 'numerology' && <Numerology />}
+              {activeTab === 'crm' && isAdmin && <AdminCRM />}
 
               {activeTab === 'astrology' && !natalChart && (
                 <div className="max-w-xl mx-auto py-12 animate-fade-in no-print text-center">
@@ -344,29 +331,9 @@ export default function AstroMasonApp() {
                                <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Hus-plassering</p>
                                <p className="text-sm text-indigo-200">Plassert i ditt {selectedPlanet.house}. hus</p>
                             </div>
-
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">Aktiv Resonans (Aspekter)</p>
-                                {getRelevantAspects(selectedPlanet.name).length > 0 ? (
-                                    <div className="space-y-2">
-                                        {getRelevantAspects(selectedPlanet.name).map((a, idx) => (
-                                            <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5 group hover:border-amber-500/30 transition-all">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-lg text-white font-serif">{a.planet1 === selectedPlanet.name ? a.planet2 : a.planet1}</span>
-                                                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">{a.type}</span>
-                                                </div>
-                                                <span className="text-[9px] text-slate-500">Orb: {a.orb}°</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-slate-500 italic">Ingen sterke aspekter for øyeblikket.</p>
-                                )}
-                            </div>
-
                             <div className="text-slate-300 text-sm leading-relaxed font-light italic bg-indigo-500/5 p-4 rounded-xl border border-indigo-500/10">
                                {selectedPlanet.isRetrograde && <p className="text-red-400 text-[10px] font-black uppercase mb-2">● Retrograd - Indre refleksjon påkrevd</p>}
-                               <span>Dette indikerer en dyp kobling til sjelens {selectedPlanet.house}. hus. {getRelevantAspects(selectedPlanet.name).length > 0 ? `Aspektene til ${getRelevantAspects(selectedPlanet.name).map(a => a.planet1 === selectedPlanet.name ? a.planet2 : a.planet1).join(', ')} farger denne energiene og skaper en dynamisk flyt i din personlighet.` : 'Denne energien står her i sin rene form, en isolert kilde til kraft i ditt kart.'}</span>
+                               <span>Dette indikerer en dyp kobling til sjelens {selectedPlanet.house}. hus. Resonansen farger denne energiene og skaper en dynamisk flyt i din personlighet.</span>
                             </div>
                           </div>
                         </div>
@@ -409,25 +376,10 @@ export default function AstroMasonApp() {
                           <div className="text-slate-400 font-light">{chapter.content}</div>
                         </div>
                       ))}
-                      {reportData.specialSection && (
-                        <div className="bg-white/5 p-8 rounded-3xl mb-12 border border-white/10">
-                          <h3 className="text-xl font-serif text-amber-500 mb-4">Spesialanalyse</h3>
-                          <div className="text-slate-400 font-light">{reportData.specialSection}</div>
-                        </div>
-                      )}
                       <div className="mt-12 pt-12 border-t border-white/5 italic text-amber-500/80 text-center text-3xl font-serif">
                         {reportData.mantra}
                       </div>
                     </article>
-                    
-                    <div className="mt-20 flex justify-center gap-6 no-print">
-                      <button onClick={() => setShowReport(false)} className="px-10 py-5 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all">
-                        Tilbake
-                      </button>
-                      <button onClick={() => window.print()} className="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-indigo-500 transition-all">
-                        <Printer size={18} /> Skriv ut Kronike
-                      </button>
-                    </div>
                   </div>
                 </div>
               )}

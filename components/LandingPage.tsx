@@ -1,21 +1,54 @@
 
 import React, { useState, useContext } from 'react';
-import { Star, Sparkles, CircleCheck, Shield, X, Lock, ChevronRight, Sun, Fingerprint, Globe } from './Icons';
+import { Star, Sparkles, CircleCheck, Shield, X, Lock, ChevronRight, Sun, Fingerprint, Globe, Mail, Loader2 } from './Icons';
 import { LangContext } from '../App';
 import { Language } from '../types';
 import { UI_TRANSLATIONS } from '../constants';
 
 interface LandingPageProps {
-  onLogin: (role: any) => void;
+  onLogin: (userData: { email: string; isAdmin: boolean }) => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('register');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('register');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [allowMarketing, setAllowMarketing] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
   const { lang, setLang } = useContext(LangContext);
   const [showLangMenu, setShowLangMenu] = useState(false);
 
   const t = UI_TRANSLATIONS[lang].landing;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+
+    // Superadmin sjekk
+    if (authMode === 'login' && email === 'freddy.bremseth@gmail.com' && password === 'AllAstro1!') {
+        setTimeout(() => {
+            onLogin({ email, isAdmin: true });
+            setIsProcessing(false);
+        }, 1000);
+        return;
+    }
+
+    if (authMode === 'forgot') {
+        alert("En gjenopprettingslenke er sendt til din e-post hvis kontoen eksisterer.");
+        setAuthMode('login');
+        setIsProcessing(false);
+        return;
+    }
+
+    // Simulert vanlig innlogging/registrering
+    setTimeout(() => {
+        onLogin({ email, isAdmin: false });
+        setIsProcessing(false);
+    }, 1000);
+  };
 
   const languages: {code: Language, label: string, flag: string}[] = [
     { code: 'no', label: 'Norsk', flag: '🇳🇴' },
@@ -65,7 +98,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
           {t.heroDesc}
         </p>
-        <button onClick={() => setShowAuthModal(true)} className="px-12 py-5 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-amber-400 transition-all shadow-2xl flex items-center gap-3 mx-auto">
+        <button onClick={() => { setAuthMode('register'); setShowAuthModal(true); }} className="px-12 py-5 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-amber-400 transition-all shadow-2xl flex items-center gap-3 mx-auto">
           {t.createArchive} <ChevronRight size={16} />
         </button>
       </header>
@@ -120,21 +153,56 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           <div className="bg-[#0a0a16] border border-white/10 w-full max-w-md rounded-[3rem] p-12 relative shadow-2xl animate-in zoom-in-95 duration-300">
             <button onClick={() => setShowAuthModal(false)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-serif font-bold text-white mb-2">{authMode === 'login' ? t.authTitleLogin : t.authTitleReg}</h2>
+              <h2 className="text-3xl font-serif font-bold text-white mb-2">
+                {authMode === 'login' ? t.authTitleLogin : authMode === 'register' ? t.authTitleReg : 'Gjenopprett Tilgang'}
+              </h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">{t.authDesc}</p>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); onLogin('client'); }} className="space-y-6">
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
-                <input type="email" placeholder={t.emailLabel} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
-                <input type="password" placeholder={t.passLabel} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
+                {authMode === 'register' && (
+                    <input type="text" placeholder="Ditt Navn" value={name} onChange={e => setName(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
+                )}
+                <input type="email" placeholder={t.emailLabel} value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
+                {authMode !== 'forgot' && (
+                    <input type="password" placeholder={t.passLabel} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
+                )}
               </div>
-              <button type="submit" className="w-full bg-white text-black font-black uppercase tracking-widest py-5 rounded-2xl text-[10px] hover:bg-amber-400 transition-all shadow-xl">
-                {authMode === 'login' ? t.loginBtn : t.regBtn}
+
+              {authMode === 'register' && (
+                <div className="flex items-start gap-3 px-2">
+                    <input 
+                        type="checkbox" 
+                        id="marketing" 
+                        checked={allowMarketing} 
+                        onChange={e => setAllowMarketing(e.target.checked)}
+                        className="mt-1 accent-amber-500"
+                    />
+                    <label htmlFor="marketing" className="text-[10px] text-slate-400 leading-relaxed font-bold uppercase tracking-wider">
+                        Tillat AstroMason å sende kosmiske oppdateringer og tilbud via e-post.
+                    </label>
+                </div>
+              )}
+
+              <button type="submit" disabled={isProcessing} className="w-full bg-white text-black font-black uppercase tracking-widest py-5 rounded-2xl text-[10px] hover:bg-amber-400 transition-all shadow-xl flex items-center justify-center gap-3">
+                {isProcessing ? <Loader2 size={18} className="animate-spin" /> : (authMode === 'login' ? t.loginBtn : authMode === 'register' ? t.regBtn : 'Send Gjenoppretting')}
               </button>
             </form>
-            <p className="mt-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              {authMode === 'login' ? t.noAccount : t.hasAccount} <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-amber-500 ml-1 hover:underline underline-offset-8">{t.clickHere}</button>
-            </p>
+
+            <div className="mt-8 space-y-4 text-center">
+                {authMode === 'login' && (
+                    <button onClick={() => setAuthMode('forgot')} className="text-[9px] text-slate-500 hover:text-amber-500 uppercase font-black tracking-widest transition-colors block mx-auto">
+                        Glemt passord?
+                    </button>
+                )}
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                {authMode === 'login' ? t.noAccount : t.hasAccount} 
+                <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-amber-500 ml-1 hover:underline underline-offset-8">
+                    {t.clickHere}
+                </button>
+                </p>
+            </div>
           </div>
         </div>
       )}
