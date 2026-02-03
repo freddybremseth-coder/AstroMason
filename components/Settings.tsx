@@ -26,6 +26,21 @@ const Settings: React.FC = () => {
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
+  // Sjekk om vi kommer tilbake fra en vellykket Stripe-betaling
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const amount = urlParams.get('amount');
+
+    if (success === 'true' && amount) {
+        const creditToAdd = parseInt(amount);
+        setCredits(prev => prev + creditToAdd);
+        // Fjern parametrene fra URL-en så vi ikke legger til kreditter flere ganger ved refresh
+        window.history.replaceState({}, document.title, "/settings");
+        alert(`Takk for din sjelelige investering! ${creditToAdd} kreditter er lagt til din profil.`);
+    }
+  }, []);
+
   useEffect(() => {
     const saved = localStorage.getItem('astromason_reports');
     if (saved) {
@@ -40,30 +55,30 @@ const Settings: React.FC = () => {
     localStorage.setItem('tarot_credits', credits.toString());
   }, [credits, userEmail]);
 
-  // PRO-TIPS: For Stripe på Vercel vil denne funksjonen kalle din egen API
   const buyCredits = async (amount: number, priceId: string) => {
     setIsPaying(true);
     
     try {
-        // I en ekte produksjonsapp på Vercel ville du gjort dette:
-        /*
+        // I produksjon kaller vi nå vår nye Vercel API-funksjon
         const response = await fetch('/api/create-checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ priceId, email: userEmail, amount })
         });
-        const session = await response.json();
-        window.location.href = session.url; // Sender brukeren til Stripe
-        */
 
-        // Simulering for nå:
-        setTimeout(() => {
-            setCredits(prev => prev + amount);
-            setIsPaying(false);
-            alert(`Suksess! ${amount} kosmiske kreditter er lagt til din sjelsprofil.`);
-        }, 1500);
+        if (!response.ok) throw new Error("Betalingsforespørsel feilet.");
+
+        const session = await response.json();
+        
+        // Videreformidler brukeren til Stripe Checkout
+        if (session.url) {
+            window.location.href = session.url;
+        } else {
+            throw new Error("Ingen betalings-URL mottatt.");
+        }
     } catch (error) {
-        alert("Kunne ikke kontakte betalingsportalen. Prøv igjen senere.");
+        console.error(error);
+        alert("Kunne ikke kontakte betalingsportalen. Husk å sette opp STRIPE_SECRET_KEY i Vercel.");
         setIsPaying(false);
     }
   };
@@ -159,10 +174,10 @@ const Settings: React.FC = () => {
                 ) : (
                     <div className="space-y-3">
                         {[
-                            { id: 'price_1', amount: 1, price: '€2', label: '1 Reise', priceId: 'stripe_id_1' },
-                            { id: 'price_5', amount: 5, price: '€5', label: '5 Reiser (Populær)', best: true, priceId: 'stripe_id_2' },
-                            { id: 'price_20', amount: 20, price: '€10', label: '20 Reiser (Verdi)', priceId: 'stripe_id_3' },
-                            { id: 'price_200', amount: 200, price: '€50', label: 'Mester-pakke', priceId: 'stripe_id_4' }
+                            { id: 'price_1', amount: 1, price: '€2', label: '1 Reise', priceId: 'price_1QqG9M...' }, // Erstatt med ekte Stripe Price IDs
+                            { id: 'price_5', amount: 5, price: '€5', label: '5 Reiser (Populær)', best: true, priceId: 'price_1QqG9N...' },
+                            { id: 'price_20', amount: 20, price: '€10', label: '20 Reiser (Verdi)', priceId: 'price_1QqG9P...' },
+                            { id: 'price_200', amount: 200, price: '€50', label: 'Mester-pakke', priceId: 'price_1QqG9R...' }
                         ].map(pkg => (
                             <button key={pkg.id} onClick={() => buyCredits(pkg.amount, pkg.priceId)} className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between group ${pkg.best ? 'bg-amber-500/10 border-amber-500/50' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
                                 <div className="text-left">
