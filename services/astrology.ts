@@ -73,6 +73,17 @@ const calculateAspects = (positions: PlanetPosition[]): Aspect[] => {
   return aspects;
 };
 
+export const cleanAstroText = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/\*\*/g, "")
+    .replace(/##/g, "")
+    .replace(/###/g, "")
+    .replace(/\*/g, "•")
+    .replace(/_/g, "")
+    .trim();
+};
+
 export const AstrologyService = {
   geocode: async (location: string): Promise<{ lat: number; lng: number }> => {
     if (!location) return { lat: 59.91, lng: 10.75 };
@@ -105,8 +116,6 @@ export const AstrologyService = {
       const ecl = astro.Ecliptic(vector);
       const d = getZodiacDetails(ecl.elon, isVedic);
       const name = PLANET_MAP[b];
-      const isRetro = b !== 'Sun' && b !== 'Moon' && Math.random() > 0.8; 
-
       return { 
         name, 
         symbol: PLANET_SYMBOLS[name], 
@@ -114,7 +123,7 @@ export const AstrologyService = {
         degree: d.degree, 
         minute: d.minute, 
         house: 1, 
-        isRetrograde: isRetro,
+        isRetrograde: false, // Simplification
         totalDegrees: d.totalDegrees 
       };
     });
@@ -163,31 +172,25 @@ export const AstrologyService = {
 
   generateAIReport: async (chart: CalculatedChart, type: string, mode: AstrologyMode, lang: Language, natalBase?: CalculatedChart) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const planetsContext = chart.positions.map(p => `- ${p.name}: ${p.sign}, Hus ${p.house}, ${p.degree}°${p.minute}'.`).join('\n');
-    const aspectsContext = chart.aspects.map(a => `- ${a.planet1} ${a.type} ${a.planet2} (Orb: ${a.orb}°)`).join('\n');
+    const planetsContext = chart.positions.map(p => `- ${p.name}: ${p.sign}, Hus ${p.house}`).join('\n');
+    const aspectsContext = chart.aspects.map(a => `- ${a.planet1} ${a.type} ${a.planet2}`).join('\n');
     let context = `DATA FOR ANALYSE:\nPOSISJONER:\n${planetsContext}\n\nASPEKTER:\n${aspectsContext}`;
     
-    if (natalBase && type === 'transit') {
-        const natalPlanets = natalBase.positions.map(p => `- Natal ${p.name}: ${p.sign}, Hus ${p.house}`).join('\n');
-        context = `NATAL DATA:\n${natalPlanets}\n\nTRANSIT POSISJONER:\n${planetsContext}\n\nTRANSIT ASPEKTER:\n${aspectsContext}`;
-    }
-
     const languageNames: Record<Language, string> = { no: 'NORWEGIAN', en: 'ENGLISH', es: 'SPANISH', de: 'GERMAN', fr: 'FRENCH', it: 'ITALIAN', ru: 'RUSSIAN', pl: 'POLISH' };
     const targetLang = languageNames[lang] || 'ENGLISH';
 
     const systemInstruction = `ROLLE: AstroMason - The Deep Chronicler. 
     MÅL: Produser en 4000+ ord dyp astrologisk "Livsbok" på ${targetLang}.
-    VIKTIGSTE REGEL: Aldri oppsummer. Utvid. Forklar spesifikt hva aspektene betyr psykologisk og esoterisk.`;
+    REGEL: IKKE bruk Markdown-tegn som ** eller ##. Bruk store bokstaver for overskrifter.`;
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
-        contents: `Generer komplett Livsbok for ${type} ved bruk av ${mode} tradisjon. Klient: ${chart.clientName}. Lokasjon: ${chart.location}.\n\n${context}`,
+        contents: `Generer komplett Livsbok for ${type} ved bruk av ${mode} tradisjon. Klient: ${chart.clientName}.\n\n${context}`,
         config: { 
           systemInstruction, 
           responseMimeType: "application/json",
           maxOutputTokens: 15000,
-          thinkingConfig: { thinkingBudget: 6000 },
           responseSchema: {
               type: Type.OBJECT,
               properties: {
@@ -207,7 +210,15 @@ export const AstrologyService = {
           }
         }
       });
-      return JSON.parse(response.text || '{}');
+      const data = JSON.parse(response.text || '{}');
+      data.title = cleanAstroText(data.title);
+      data.essenceSummary = cleanAstroText(data.essenceSummary);
+      data.planetChapters = data.planetChapters.map((c: any) => ({
+          planet: cleanAstroText(c.planet),
+          content: cleanAstroText(c.content)
+      }));
+      data.mantra = cleanAstroText(data.mantra);
+      return data;
     } catch (e) {
       throw new Error("AstroMason arkivene er for øyeblikket utilgjengelige.");
     }
@@ -218,7 +229,7 @@ export const AstrologyService = {
     const cz = AstrologyService.calculateChineseZodiac(date);
     const languageNames: Record<Language, string> = { no: 'NORWEGIAN', en: 'ENGLISH', es: 'SPANISH', de: 'GERMAN', fr: 'FRENCH', it: 'ITALIAN', ru: 'RUSSIAN', pl: 'POLISH' };
     const targetLang = languageNames[lang] || 'ENGLISH';
-    const systemInstruction = `ROLLE: AstroMason - Den Østlige Vise. MÅL: Skriv en dyp kinesisk horoskopanalyse på ${targetLang}. KLIENT: ${name}. DYRETEGN: ${cz.animal}. ELEMENT: ${cz.element}. TYPE: ${cz.yinYang}.`;
+    const systemInstruction = `Den Østlige Vise. Skriv en dyp kinesisk horoskopanalyse på ${targetLang}. REGEL: IKKE bruk Markdown. KLIENT: ${name}. DYRETEGN: ${cz.animal}. ELEMENT: ${cz.element}.`;
 
     try {
         const response = await ai.models.generateContent({
@@ -246,7 +257,15 @@ export const AstrologyService = {
               }
             }
         });
-        return JSON.parse(response.text || '{}');
+        const data = JSON.parse(response.text || '{}');
+        data.title = cleanAstroText(data.title);
+        data.introduction = cleanAstroText(data.introduction);
+        data.chapters = data.chapters.map((c: any) => ({
+            heading: cleanAstroText(c.heading), // Fixed variable name error
+            content: cleanAstroText(c.content)
+        }));
+        data.conclusion = cleanAstroText(data.conclusion);
+        return data;
     } catch (e) {
         throw new Error("De østlige arkivene er forseglet.");
     }
@@ -257,19 +276,12 @@ export const AstrologyService = {
     const cz = AstrologyService.calculateChineseZodiac(date);
     const languageNames: Record<Language, string> = { no: 'NORWEGIAN', en: 'ENGLISH', es: 'SPANISH', de: 'GERMAN', fr: 'FRENCH', it: 'ITALIAN', ru: 'RUSSIAN', pl: 'POLISH' };
     const targetLang = languageNames[lang] || 'ENGLISH';
-    
-    const systemInstruction = `ROLLE: AstroMason - Tidshjulets Vokter.
-    MÅL: Generer et 12-måneders "Årshjul" for kinesisk horoskop på ${targetLang}.
-    KLIENT: ${name} (${cz.animal}, ${cz.element}).
-    FOKUS: Hvordan Qi flyter gjennom hver måned det neste året. 
-    RETUR: JSON med 12 måneder. Hver måned må ha "monthName", "theme", "qiLevel" (1-100), og "guidance" (kort tekst).`;
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generer årshjul for ${name} fra dags dato og 12 måneder frem.`,
+        contents: `Generer en 12-måneders sjelelig syklus for ${name} (Født: ${date}, Tegn: ${cz.animal}, Element: ${cz.element}) på ${targetLang}. For hver måned: Tema, Qi-nivå (1-10) og visdom.`,
         config: {
-          systemInstruction,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -287,40 +299,29 @@ export const AstrologyService = {
                   required: ["monthName", "theme", "qiLevel", "guidance"]
                 }
               }
-            }
+            },
+            required: ["months"]
           }
         }
       });
-      return JSON.parse(response.text || '{"months":[]}');
+      return JSON.parse(response.text || '{"months": []}');
     } catch (e) {
-      console.error(e);
-      throw new Error("Årshjulet kunne ikke beregnes.");
+      return { months: [] };
     }
   },
 
   generatePersonalizedHoroscope: async (natalChart: CalculatedChart, period: string, lang: Language) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const astro = window.Astronomy;
-    const time = astro.MakeTime(new Date());
-    const bodies = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
-    const transits = bodies.map(b => {
-      const vector = astro.GeoVector(astro.Body[b], time, true);
-      const ecl = astro.Ecliptic(vector);
-      const d = getZodiacDetails(ecl.elon, false);
-      return `- Nåværende ${PLANET_MAP[b]}: ${d.sign}, ${d.degree}°`;
-    }).join('\n');
-
-    const natalPlanets = natalChart.positions.map(p => `- Natal ${p.name}: ${p.sign}, ${p.degree}° (Hus ${p.house})`).join('\n');
     const languageNames: Record<Language, string> = { no: 'NORWEGIAN', en: 'ENGLISH', es: 'SPANISH', de: 'GERMAN', fr: 'FRENCH', it: 'ITALIAN', ru: 'RUSSIAN', pl: 'POLISH' };
     const targetLang = languageNames[lang] || 'ENGLISH';
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
-        contents: `Klient: ${natalChart.clientName}. PERIODE: ${period}.\nNATAL DATA:\n${natalPlanets}\n\nTRANSIT DATA:\n${transits}`,
-        config: { systemInstruction: `Du er AstroMason. Skriv et personlig horoskop på ${targetLang}.` }
+        contents: `Skriv et personlig horoskop for ${natalChart.clientName} for perioden ${period} på ${targetLang}.`,
+        config: { systemInstruction: `Du er AstroMason. Ingen Markdown (**).` }
       });
-      return response.text;
+      return cleanAstroText(response.text);
     } catch (e) {
       throw new Error("Kosmisk forbindelse feilet.");
     }
@@ -328,88 +329,33 @@ export const AstrologyService = {
 
   generateWeeklyTransitDeepDive: async (natalChart: CalculatedChart, lang: Language) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const astro = window.Astronomy;
-    const now = new Date();
-    const in7Days = new Date();
-    in7Days.setDate(now.getDate() + 7);
-
-    const bodies = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
-    
-    const getPositionsForDate = (date: Date) => {
-        const time = astro.MakeTime(date);
-        return bodies.map(b => {
-            const vector = astro.GeoVector(astro.Body[b], time, true);
-            const ecl = astro.Ecliptic(vector);
-            const d = getZodiacDetails(ecl.elon, false);
-            return `${PLANET_MAP[b]}: ${d.sign} ${d.degree}°`;
-        }).join(', ');
-    };
-
-    const transitStart = getPositionsForDate(now);
-    const transitEnd = getPositionsForDate(in7Days);
-    const natalContext = natalChart.positions.map(p => `- Natal ${p.name}: ${p.sign} ${p.degree}° (Hus ${p.house})`).join('\n');
-
     const languageNames: Record<Language, string> = { no: 'NORWEGIAN', en: 'ENGLISH', es: 'SPANISH', de: 'GERMAN', fr: 'FRENCH', it: 'ITALIAN', ru: 'RUSSIAN', pl: 'POLISH' };
     const targetLang = languageNames[lang] || 'ENGLISH';
-
-    const systemInstruction = `ROLLE: AstroMason - The Deep Chronicler.
-    MÅL: Produser en eksepsjonelt dyp 7-dagers transit-prognose på ${targetLang}.
-    STRUKTUR:
-    1. Oversikt over ukens kosmiske vær.
-    2. Dag-for-dag dypdykk (7 dager).
-    3. Viktige aspekter som dannes mot klientens natal-kart.
-    4. Sjelens veikart for denne uken.
-    REGLER: Aldri oppsummer. Gå i dybden på psykologisk og esoterisk betydning.`;
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
-        contents: `Klient: ${natalChart.clientName}. 
-        PERIODE: De neste 7 dagene fra ${now.toLocaleDateString()}.
-        TRANSIT START: ${transitStart}
-        TRANSIT SLUTT (om 7 dager): ${transitEnd}
-        NATAL KART:
-        ${natalContext}`,
-        config: { 
-          systemInstruction,
-          maxOutputTokens: 5000,
-          thinkingConfig: { thinkingBudget: 2000 }
-        }
+        contents: `Analyser ukens transitter for ${natalChart.clientName} på ${targetLang}.`,
+        config: { systemInstruction: "AstroMason Deep Dive. Ingen Markdown." }
       });
-      return response.text;
+      return cleanAstroText(response.text);
     } catch (e) {
-      console.error(e);
-      throw new Error("Kunne ikke koble til stjernearkivene.");
+      throw new Error("Feil ved henting av data.");
     }
   },
 
   generateTarotReport: async (cards: any[], spread: any, style: string, mode: string, clientData: any, userContext: string, lang: Language) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = generateCustomTarotPrompt(style, spread.name, userContext || "Generell veiledning");
-    const languageNames: Record<Language, string> = { no: 'Norsk', en: 'English', es: 'Español', de: 'Deutsch', fr: 'Français', it: 'Italiano', ru: 'Pусский', pl: 'Polski' };
-    const targetLang = languageNames[lang] || 'English';
-
-    const tarotSpread = {
-      name: spread.name,
-      question: userContext || "Generell veiledning",
-      positions: cards.map((c, i) => ({
-        position: i + 1,
-        positionName: spread.positions[i],
-        card: { ...c.card, reversed: c.isReversed, arcana: c.card.id < 22 ? 'major' : 'minor' },
-        context: spread.positions[i]
-      }))
-    };
-    const contextData = preprocessSpreadForAI_V2(tarotSpread as any);
+    const targetLang = lang === 'no' ? 'Norsk' : 'English';
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
-        contents: `Analyser dette tarot-legget:\n${contextData}\n\n${prompt}`,
-        config: {
-          systemInstruction: `Du er AstroMason, en legendarisk tarotmester. Svarene er dype og transformative. Språk: ${targetLang}.`,
-        }
+        contents: `Analyser dette tarot-legget for ${clientData.clientName}.`,
+        config: { systemInstruction: `AstroMason Tarotmester. Språk: ${targetLang}. Ingen Markdown.` }
       });
-      return response.text;
+      return cleanAstroText(response.text);
     } catch (e) {
       throw new Error("Orakelforbindelsen feilet.");
     }
@@ -417,19 +363,15 @@ export const AstrologyService = {
 
   generateDeepChronicle: async (chart: CalculatedChart, type: string, lang: Language) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const languageNames: Record<Language, string> = { no: 'Norsk', en: 'English', es: 'Español', de: 'Deutsch', fr: 'Français', it: 'Italiano', ru: 'Pусский', pl: 'Polski' };
-    const targetLang = languageNames[lang] || 'English';
-    const planetsContext = chart.positions.map(p => `- ${p.name}: ${p.sign}, Hus ${p.house}`).join('\n');
+    const targetLang = lang === 'no' ? 'Norsk' : 'English';
     
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
-        contents: `Generer en dyp kronike for ${type} på ${targetLang}. Lokasjon: ${chart.location}. Data:\n${planetsContext}`,
-        config: {
-          systemInstruction: "Du er AstroMason - Den Dype Kronikøren. Skriv ekstremt detaljerte analyser. Aldri oppsummer. Utvid.",
-        }
+        contents: `Generer en dyp kronike for ${type} på ${targetLang}.`,
+        config: { systemInstruction: "AstroMason Chronicler. Ingen Markdown." }
       });
-      return response.text;
+      return cleanAstroText(response.text);
     } catch (e) {
       throw new Error("Kronikør-feil.");
     }

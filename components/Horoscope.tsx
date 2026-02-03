@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useContext } from 'react';
-import { Calendar, Clock, Sun, Moon, Activity, Sparkles, Loader2, Scroll, BookOpen, Fingerprint, Printer } from './Icons';
+import { Calendar, Clock, Sun, Moon, Activity, Sparkles, Loader2, Scroll, BookOpen, Fingerprint, Printer, Wallet } from './Icons';
 import { AstrologyService } from '../services/astrology';
 import { CalculatedChart, Language } from '../types';
 import { LangContext } from '../App';
@@ -15,6 +16,7 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
   const [period, setPeriod] = useState<string>('day');
   const [report, setReport] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   const periods = [
     { id: 'day', label: t.periodDay, icon: Clock },
@@ -25,10 +27,31 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
 
   const fetchHoroscope = async (selectedPeriod: string) => {
     if (!natalChart) return;
+
+    const sub = localStorage.getItem('soul_subscription');
+    const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
+    const COST = 1;
+
+    // Sjekk om brukeren har råd
+    if (sub !== 'Master' && credits < COST) {
+        setShowDemo(true);
+        setReport(null);
+        return;
+    }
+
+    setShowDemo(false);
     setIsLoading(true);
     setReport(null);
     try {
       const text = await AstrologyService.generatePersonalizedHoroscope(natalChart, selectedPeriod, lang);
+      
+      // Trekk kreditt
+      if (sub !== 'Master') {
+          const newCredits = credits - COST;
+          localStorage.setItem('tarot_credits', newCredits.toString());
+          window.dispatchEvent(new Event('storage'));
+      }
+
       setReport(text);
     } catch (e) {
       setReport("Kunne ikke hente de kosmiske meldingene akkurat nå.");
@@ -39,9 +62,14 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
 
   useEffect(() => {
     if (natalChart) {
-      fetchHoroscope(period);
+      // Vi trigger ikke automatisk fetch for å spare penger, brukeren må klikke?
+      // Eller vi sjekker kreditter først.
     }
-  }, [period, natalChart]);
+  }, [natalChart]);
+
+  const handleGenerate = () => {
+      fetchHoroscope(period);
+  };
 
   if (!natalChart) {
     return (
@@ -58,37 +86,65 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-12 animate-fade-in">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-12 animate-fade-in pb-32">
       <header className="text-center space-y-4">
         <h2 className="text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500">{t.horoscopeTitle}</h2>
         <p className="text-slate-500 text-xs uppercase tracking-[0.5em] font-black">{t.horoscopeSubtitle}</p>
       </header>
 
-      <div className="flex flex-wrap justify-center gap-3 no-print">
-        {periods.map(p => (
-            <button key={p.id} onClick={() => setPeriod(p.id)} className={`px-6 py-4 rounded-2xl border flex items-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest ${period === p.id ? 'bg-amber-500 border-amber-400 text-black shadow-xl shadow-amber-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'}`}>
-                <p.icon size={16} /> {p.label}
-            </button>
-        ))}
+      <div className="flex flex-col items-center gap-8 no-print">
+        <div className="flex flex-wrap justify-center gap-3">
+            {periods.map(p => (
+                <button key={p.id} onClick={() => { setPeriod(p.id); setReport(null); setShowDemo(false); }} className={`px-6 py-4 rounded-2xl border flex items-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest ${period === p.id ? 'bg-amber-500 border-amber-400 text-black shadow-xl shadow-amber-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'}`}>
+                    <p.icon size={16} /> {p.label}
+                </button>
+            ))}
+        </div>
+
+        <button 
+            onClick={handleGenerate} 
+            disabled={isLoading}
+            className="px-12 py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-3"
+        >
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <><Sparkles size={18} /> Generer Personlig Tolkning</>}
+        </button>
+        <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Koster 1 Kreditt</p>
       </div>
 
-      <div className="bg-[#0a0a1a] p-10 md:p-16 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden min-h-[500px]">
+      <div className="bg-[#0a0a1a] p-10 md:p-16 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden min-h-[400px]">
         <div className="absolute top-8 right-8 no-print">
-            <button onClick={() => window.print()} className="p-3 bg-amber-500/10 rounded-full hover:bg-amber-500/20 transition-all text-amber-500 flex items-center gap-2 px-6">
-                <Printer size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">PDF / Utskrift</span>
-            </button>
-        </div>
-        <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-            <Sparkles size={200} />
+            {report && (
+                <button onClick={() => window.print()} className="p-3 bg-amber-500/10 rounded-full hover:bg-amber-500/20 transition-all text-amber-500 flex items-center gap-2 px-6">
+                    <Printer size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">PDF / Utskrift</span>
+                </button>
+            )}
         </div>
 
         {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center space-y-8 py-24">
                 <Loader2 className="animate-spin text-amber-500" size={64} />
                 <div className="text-center space-y-2">
-                    <p className="font-serif text-2xl text-amber-100 animate-pulse">AstroMason konsulterer planetenes nåværende bane...</p>
-                    <p className="text-[10px] uppercase text-slate-500 tracking-widest">Kalkulerer aspekter mot ditt natal-kart</p>
+                    <p className="font-serif text-2xl text-amber-100 animate-pulse">AstroMason konsulterer planetene...</p>
+                    <p className="text-[10px] uppercase text-slate-500 tracking-widest">Kalkulerer aspekter for {periods.find(p => p.id === period)?.label}</p>
                 </div>
+            </div>
+        ) : showDemo ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-8">
+                <div className="p-6 bg-white/5 rounded-full text-amber-500/30">
+                    <Wallet size={64} />
+                </div>
+                <div className="space-y-4 max-w-md">
+                    <h3 className="text-3xl font-serif text-white">Personlig tolkning krever kreditter</h3>
+                    <p className="text-slate-400 font-light leading-relaxed">
+                        AstroMason AI bruker dype nevrale nettverk for å tolke dine spesifikke transitter. Denne prosessen krever kosmiske kreditter.
+                    </p>
+                </div>
+                <button 
+                    onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'settings' }))}
+                    className="px-10 py-4 bg-amber-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-amber-400 transition-all"
+                >
+                    Gå til arkivet og fyll på
+                </button>
             </div>
         ) : report ? (
             <article className="prose prose-invert prose-xl max-w-none relative z-10">
@@ -97,18 +153,23 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
                         <Scroll size={24} />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-serif text-white m-0">Din sjelelige tidslinje</h3>
+                        <h3 className="text-2xl font-serif text-white m-0 uppercase tracking-widest">SJELELIG TIDSLINJE</h3>
                         <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Periode: {periods.find(p => p.id === period)?.label}</p>
                     </div>
                 </div>
-                <div className="text-slate-300 leading-[2.2] font-light whitespace-pre-wrap first-letter:text-7xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-4 first-letter:float-left first-letter:mt-1">
+                <div className="text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
                     {report}
                 </div>
-                <div className="mt-20 pt-10 border-t border-white/5 text-center italic text-slate-500 text-sm font-light">
+                <div className="mt-20 pt-10 border-t border-white/5 text-center italic text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
                    Kanalisert av AstroMason Intelligence • {new Date().toLocaleDateString()}
                 </div>
             </article>
-        ) : null}
+        ) : (
+            <div className="h-full flex flex-col items-center justify-center py-32 opacity-10 space-y-6">
+                <Sparkles size={100} />
+                <p className="font-serif italic text-2xl">Velg en periode og generer din tolkning</p>
+            </div>
+        )}
       </div>
     </div>
   );

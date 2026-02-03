@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, CreditCard, Mail, Search, Download, CheckCircle, XCircle, Star, Shield, Send, X, Loader2, Sparkles } from './Icons';
+import { Users, CreditCard, Mail, Search, Download, CheckCircle, XCircle, Star, Shield, Send, X, Loader2, Sparkles, Wallet, Plus, Coins } from './Icons';
 
 interface UserRecord {
   id: string;
@@ -11,22 +11,26 @@ interface UserRecord {
   lastPayment: string;
   allowMarketing: boolean;
   totalSpent: number;
+  credits: number;
 }
 
 const AdminCRM: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'master' | 'marketing'>('all');
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+  const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+  const [creditAmount, setCreditAmount] = useState<string>('10');
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [messageData, setMessageData] = useState({ subject: '', body: '' });
   
-  // Simulert datagrunnlag for CRM (Dette vil hentes fra Supabase senere)
-  const [users] = useState<UserRecord[]>([
-    { id: '1', name: 'Freddy Bremseth', email: 'freddy.bremseth@gmail.com', subscription: 'Master', joinedDate: '2025-01-01', lastPayment: '2025-05-15', allowMarketing: true, totalSpent: 49 },
-    { id: '2', name: 'Astrid Astrolog', email: 'astrid@stjernen.no', subscription: 'Single', joinedDate: '2025-02-14', lastPayment: '2025-02-14', allowMarketing: true, totalSpent: 14 },
-    { id: '3', name: 'Ola Nordmann', email: 'ola@test.no', subscription: 'None', joinedDate: '2025-03-10', lastPayment: '-', allowMarketing: false, totalSpent: 0 },
-    { id: '4', name: 'Kari Sjel', email: 'kari@mystisk.no', subscription: 'Master', joinedDate: '2025-01-20', lastPayment: '2025-01-20', allowMarketing: true, totalSpent: 49 },
+  // Simulert datagrunnlag for CRM
+  const [users, setUsers] = useState<UserRecord[]>([
+    { id: '1', name: 'Freddy Bremseth', email: 'freddy.bremseth@gmail.com', subscription: 'Master', joinedDate: '2025-01-01', lastPayment: '2025-05-15', allowMarketing: true, totalSpent: 49, credits: 200000 },
+    { id: '2', name: 'Astrid Astrolog', email: 'astrid@stjernen.no', subscription: 'Single', joinedDate: '2025-02-14', lastPayment: '2025-02-14', allowMarketing: true, totalSpent: 14, credits: 5 },
+    { id: '3', name: 'Ola Nordmann', email: 'ola@test.no', subscription: 'None', joinedDate: '2025-03-10', lastPayment: '-', allowMarketing: false, totalSpent: 0, credits: 0 },
+    { id: '4', name: 'Kari Sjel', email: 'kari@mystisk.no', subscription: 'Master', joinedDate: '2025-01-20', lastPayment: '2025-01-20', allowMarketing: true, totalSpent: 49, credits: 100 },
   ]);
 
   const filteredUsers = users.filter(u => {
@@ -45,12 +49,38 @@ const AdminCRM: React.FC = () => {
     marketingAccept: users.filter(u => u.allowMarketing).length
   };
 
+  const handleAddCredit = (user: UserRecord) => {
+    setSelectedUser(user);
+    setIsCreditModalOpen(true);
+  };
+
+  const executeAddCredit = async () => {
+    if (!selectedUser) return;
+    setIsSending(true);
+    
+    // Simulerer API-kall
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const amount = parseInt(creditAmount);
+    setUsers(prev => prev.map(u => 
+        u.id === selectedUser.id ? { ...u, credits: u.credits + amount } : u
+    ));
+    
+    setIsSending(false);
+    setSendSuccess(true);
+    setTimeout(() => {
+        setSendSuccess(false);
+        setIsCreditModalOpen(false);
+        setSelectedUser(null);
+        setCreditAmount('10');
+    }, 1500);
+  };
+
   const handleSendMassUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageData.subject || !messageData.body) return;
 
     setIsSending(true);
-    // Simulere utsending til API/Supabase Edge Function
     setTimeout(() => {
         setIsSending(false);
         setSendSuccess(true);
@@ -136,9 +166,9 @@ const AdminCRM: React.FC = () => {
                     <tr className="bg-white/[0.02] text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-white/5">
                         <th className="px-8 py-6">Bruker & E-post</th>
                         <th className="px-8 py-6">Abonnement</th>
-                        <th className="px-8 py-6">E-post Tillatelse</th>
-                        <th className="px-8 py-6">Siste Betaling</th>
-                        <th className="px-8 py-6 text-right">Investert</th>
+                        <th className="px-8 py-6">Saldo</th>
+                        <th className="px-8 py-6">Markedsføring</th>
+                        <th className="px-8 py-6 text-right">Handlinger</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -160,6 +190,12 @@ const AdminCRM: React.FC = () => {
                                 </span>
                             </td>
                             <td className="px-8 py-6">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl font-serif text-amber-100">{user.subscription === 'Master' ? '∞' : user.credits}</span>
+                                    <Coins size={14} className="text-amber-500/40" />
+                                </div>
+                            </td>
+                            <td className="px-8 py-6">
                                 {user.allowMarketing ? (
                                     <div className="flex items-center gap-2 text-green-500 text-[10px] font-bold uppercase tracking-widest">
                                         <CheckCircle size={14} /> JA
@@ -170,14 +206,14 @@ const AdminCRM: React.FC = () => {
                                     </div>
                                 )}
                             </td>
-                            <td className="px-8 py-6">
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-slate-300">{user.lastPayment}</p>
-                                    <p className="text-[9px] text-slate-600 uppercase font-black">Siden: {user.joinedDate}</p>
-                                </div>
-                            </td>
-                            <td className="px-8 py-6 text-right font-serif text-white text-lg">
-                                €{user.totalSpent}
+                            <td className="px-8 py-6 text-right">
+                                <button 
+                                    onClick={() => handleAddCredit(user)}
+                                    className="p-3 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-black rounded-xl transition-all group/btn"
+                                    title="Tildel Kreditter"
+                                >
+                                    <Plus size={20} className="group-hover/btn:scale-110 transition-transform" />
+                                </button>
                             </td>
                         </tr>
                     ))}
@@ -189,6 +225,71 @@ const AdminCRM: React.FC = () => {
             <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic">Viser {filteredUsers.length} av {users.length} sjeler i databasen</p>
         </div>
       </section>
+
+      {/* Credit Management Modal */}
+      {isCreditModalOpen && selectedUser && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
+              <div className="bg-[#0f0f25] border border-amber-500/20 w-full max-w-md rounded-[3rem] p-12 relative shadow-2xl animate-in zoom-in-95 duration-300">
+                  <button onClick={() => !isSending && setIsCreditModalOpen(false)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+                  
+                  {sendSuccess ? (
+                      <div className="text-center py-20 space-y-6 animate-fade-in">
+                          <div className="w-24 h-24 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto text-amber-500">
+                              <Sparkles size={48} />
+                          </div>
+                          <div className="space-y-2">
+                              <h3 className="text-3xl font-serif text-white italic">Kreditter overført!</h3>
+                              <p className="text-slate-500 text-[10px] uppercase font-black tracking-[0.3em]">Ny saldo for {selectedUser.name} er oppdatert</p>
+                          </div>
+                      </div>
+                  ) : (
+                      <>
+                        <div className="text-center mb-10 space-y-2">
+                            <h2 className="text-3xl font-serif font-bold text-white tracking-tight">Kreditthåndtering</h2>
+                            <p className="text-[10px] text-amber-500 uppercase tracking-widest font-black">Mottaker: {selectedUser.name}</p>
+                        </div>
+                        
+                        <div className="space-y-8">
+                            <div className="bg-black/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
+                                <p className="text-[9px] uppercase text-slate-500 font-black tracking-widest">Gjeldende Saldo</p>
+                                <p className="text-4xl font-serif text-white">{selectedUser.credits} Kreditter</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest ml-1">Beløp å legge til</label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {['5', '20', '50'].map(val => (
+                                        <button 
+                                            key={val} 
+                                            onClick={() => setCreditAmount(val)}
+                                            className={`py-4 rounded-2xl border font-black text-xs transition-all ${creditAmount === val ? 'bg-amber-500 border-amber-400 text-black shadow-lg' : 'bg-white/5 border-white/10 text-slate-400'}`}
+                                        >
+                                            +{val}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input 
+                                    type="number" 
+                                    value={creditAmount}
+                                    onChange={e => setCreditAmount(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white text-center text-xl font-serif outline-none focus:border-amber-500 transition-all"
+                                    placeholder="Egendefinert beløp"
+                                />
+                            </div>
+
+                            <button 
+                                onClick={executeAddCredit}
+                                disabled={isSending || !creditAmount || parseInt(creditAmount) <= 0}
+                                className="w-full bg-amber-500 text-black font-black uppercase tracking-widest py-6 rounded-2xl text-[11px] hover:bg-amber-400 transition-all shadow-xl shadow-amber-900/20 flex items-center justify-center gap-3"
+                            >
+                                {isSending ? <Loader2 size={18} className="animate-spin" /> : <><Plus size={18} /> Bekreft Tildeling</>}
+                            </button>
+                        </div>
+                      </>
+                  )}
+              </div>
+          </div>
+      )}
 
       {/* Compose Bulk Message Modal */}
       {isComposeModalOpen && (

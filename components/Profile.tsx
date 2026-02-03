@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useContext } from 'react';
 import { UserCircle, User, Key, History, Save, Download, FileText, BookOpen, Trash2, Shield, Lock, ExternalLink, Moon, Sun, Monitor, Printer, X, Loader2, CheckCircle, Info, MapPin, Calendar, Clock as ClockIcon, ChevronRight } from './Icons';
 import { ThemeContext, LangContext } from '../App';
@@ -60,12 +61,25 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
     localStorage.setItem('soul_location', soulData.location);
     localStorage.setItem('soul_houses', soulData.houseSystem);
     
+    const email = (localStorage.getItem('soul_email') || '').toLowerCase();
+
+    // Spesialhåndtering for kreditter basert på e-post eller navn
+    if (email === 'freddy.bremseth@gmail.com' || soulData.name.toLowerCase().includes('freddy')) {
+        localStorage.setItem('tarot_credits', '200000');
+        localStorage.setItem('soul_subscription', 'Master');
+    } else if (email === 'anna@donaanna.com' || soulData.name.toLowerCase().includes('anna')) {
+        localStorage.setItem('tarot_credits', '100000');
+        localStorage.setItem('soul_subscription', 'Single');
+    }
+
     setTimeout(() => {
         setIsSaving(false);
         setShowSuccess(true);
-        if (onUpdate) onUpdate(); 
-        setTimeout(() => setShowSuccess(false), 3000);
-    }, 800);
+        if (onUpdate) {
+            onUpdate(); 
+        }
+        setTimeout(() => setShowSuccess(false), 2000);
+    }, 1200);
   };
 
   const openReport = (saved: SavedReport) => {

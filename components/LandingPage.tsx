@@ -28,9 +28,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     e.preventDefault();
     setIsProcessing(true);
 
-    if (authMode === 'login' && email === 'freddy.bremseth@gmail.com' && password === 'AllAstro1!') {
+    // Superadmin Login (Freddy)
+    if (authMode === 'login' && email.toLowerCase() === 'freddy.bremseth@gmail.com' && password === 'AllAstro1!') {
         setTimeout(() => {
+            localStorage.setItem('tarot_credits', '200000');
+            localStorage.setItem('soul_subscription', 'Master');
             onLogin({ email, isAdmin: true });
+            setIsProcessing(false);
+        }, 1000);
+        return;
+    }
+
+    // Spesialbruker Login (Anna)
+    if (authMode === 'login' && email.toLowerCase() === 'anna@donaanna.com' && password === '012345') {
+        setTimeout(() => {
+            localStorage.setItem('tarot_credits', '100000');
+            localStorage.setItem('soul_subscription', 'Single');
+            onLogin({ email, isAdmin: false });
             setIsProcessing(false);
         }, 1000);
         return;
@@ -143,7 +157,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     <li key={i} className="flex items-center gap-3 text-xs text-white"><CircleCheck size={16} className="text-amber-500" /> {item}</li>
                   ))}
                 </ul>
-                <button onClick={() => setShowAuthModal(true)} className="w-full py-5 bg-amber-500 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-400 transition-all shadow-2xl shadow-amber-500/20">{t.selectMaster}</button>
+                <button onClick={() => setShowAuthModal(true)} className="w-full py-5 bg-amber-500 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-400 transition-all shadow-xl shadow-amber-500/20">{t.selectMaster}</button>
              </div>
           </div>
         </div>

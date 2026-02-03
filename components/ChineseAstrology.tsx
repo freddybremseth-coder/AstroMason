@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useContext } from 'react';
-import { Sparkles, Loader2, Scroll, BookOpen, Fingerprint, Star, User, History, ChevronRight, Activity, Calendar, Printer } from './Icons';
+import { Sparkles, Loader2, Scroll, BookOpen, Fingerprint, Star, User, History, ChevronRight, Activity, Calendar, Printer, Wallet, Zap } from './Icons';
 import { AstrologyService } from '../services/astrology';
 import { Language } from '../types';
 import { LangContext } from '../App';
@@ -30,10 +31,21 @@ const ChineseAstrology: React.FC = () => {
   const [yearlyCycle, setYearlyCycle] = useState<MonthlyEnergy[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCycleLoading, setIsCycleLoading] = useState(false);
-  const [activeMonth, setActiveMonth] = useState<number>(0);
+  
+  const COST = 3;
 
   const calculate = async () => {
     if (!name || !date) return;
+
+    const sub = localStorage.getItem('soul_subscription');
+    const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
+
+    if (sub !== 'Master' && credits < COST) {
+        alert(`Denne analysen krever ${COST} kreditter. Du blir nå ledet til arkivet for påfyll.`);
+        window.dispatchEvent(new CustomEvent('navigate', { detail: 'settings' }));
+        return;
+    }
+
     setIsLoading(true);
     setReport(null);
     setYearlyCycle(null);
@@ -41,10 +53,17 @@ const ChineseAstrology: React.FC = () => {
         const cz = AstrologyService.calculateChineseZodiac(date);
         setResults(cz);
         const structuredReport = await AstrologyService.generateChineseReport(name, date, lang);
+        
+        if (sub !== 'Master') {
+            localStorage.setItem('tarot_credits', (credits - COST).toString());
+            window.dispatchEvent(new Event('storage'));
+        }
+
         setReport(structuredReport);
         loadYearlyCycle();
     } catch (e) {
         console.error(e);
+        alert("Forbindelsen til de østlige arkivene er midlertidig brutt.");
     } finally {
         setIsLoading(false);
     }
@@ -84,51 +103,39 @@ const ChineseAstrology: React.FC = () => {
 
         {/* Input Bar */}
         <section className="bg-[#1a0a0a]/60 backdrop-blur-xl border border-red-900/20 p-8 rounded-[3rem] shadow-2xl no-print">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                <div className="md:col-span-4 space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+                <div className="md:col-span-4 space-y-3">
                     <label className="text-[10px] uppercase font-black text-red-500 tracking-widest ml-1 flex items-center gap-2">
                         <User size={12} /> Sjelens Navn
                     </label>
                     <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Fullt Navn" className="w-full bg-black/40 border border-red-900/20 rounded-2xl p-4 text-white focus:border-red-500 outline-none transition-all placeholder:opacity-20" />
                 </div>
-                <div className="md:col-span-4 space-y-2">
+                <div className="md:col-span-4 space-y-3">
                     <label className="text-[10px] uppercase font-black text-red-500 tracking-widest ml-1 flex items-center gap-2">
                         <Fingerprint size={12} /> Fødselsdato
                     </label>
                     <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-black/40 border border-red-900/20 rounded-2xl p-4 text-white focus:border-red-500 outline-none transition-all" />
                 </div>
-                <div className="md:col-span-4">
-                    <button onClick={calculate} disabled={isLoading || !name || !date} className="w-full py-4 bg-gradient-to-r from-red-800 to-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:from-red-700 transition-all shadow-xl shadow-red-950/40 disabled:opacity-30 flex items-center justify-center gap-3">
-                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <><Star size={18} /> Åpne de Østlige Arkivene</>}
+                <div className="md:col-span-4 space-y-3">
+                    <button onClick={calculate} disabled={isLoading || !name || !date} className="w-full py-4 bg-gradient-to-r from-red-800 to-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:from-red-700 transition-all shadow-xl shadow-red-950/40 disabled:opacity-30 flex items-center justify-center gap-3">
+                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <><Star size={18} /> Analyser Østlig Sjel</>}
                     </button>
+                    <p className="text-[9px] text-center text-slate-500 font-black uppercase tracking-widest">{COST} Kreditter</p>
                 </div>
             </div>
         </section>
 
         {results && (
             <div className="flex flex-wrap justify-center gap-6 animate-slide-up">
-                <div className="bg-[#1a0a0a]/40 border border-red-900/20 px-10 py-6 rounded-[2.5rem] text-center min-w-[200px] backdrop-blur-sm">
+                <div className="bg-[#1a0a0a]/40 border border-red-900/20 px-10 py-6 rounded-[2.5rem] text-center min-w-[220px] backdrop-blur-sm">
                     <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-2">Ditt Dyretegn</p>
                     <p className="text-4xl font-serif text-white">{results.animal}</p>
                 </div>
-                <div className="bg-[#1a0a0a]/40 border border-red-900/20 px-10 py-6 rounded-[2.5rem] text-center min-w-[200px] backdrop-blur-sm">
+                <div className="bg-[#1a0a0a]/40 border border-red-900/20 px-10 py-6 rounded-[2.5rem] text-center min-w-[220px] backdrop-blur-sm">
                     <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-2">Ditt Element</p>
                     <p className="text-4xl font-serif text-white">{results.element} ({results.yinYang})</p>
                 </div>
             </div>
-        )}
-
-        {/* YEARLY CYCLE WHEEL SECTION */}
-        {(yearlyCycle || isCycleLoading) && (
-            <section className="space-y-10 animate-fade-in no-print">
-                <div className="flex justify-between items-center px-4">
-                    <h3 className="text-3xl font-serif text-white border-l-4 border-red-600 pl-6">Det Sykliske Årshjulet (1 år frem)</h3>
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                       <Activity size={14} className="text-red-500" /> Qi-Strøm Analyse
-                    </div>
-                </div>
-                {/* ... existing yearly cycle wheel code ... */}
-            </section>
         )}
 
         {/* AI Report Section */}
@@ -139,14 +146,21 @@ const ChineseAstrology: React.FC = () => {
                         <Printer size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">PDF / Utskrift</span>
                     </button>
                 </div>
-                {/* ... existing report rendering code ... */}
+                
+                {isLoading && (
+                    <div className="flex flex-col items-center justify-center py-40 space-y-8">
+                        <Loader2 size={64} className="animate-spin text-red-500" />
+                        <p className="font-serif text-2xl text-red-100 italic">Østlige arkiver dechiffreres...</p>
+                    </div>
+                )}
+
                 {report && (
                     <article className="max-w-4xl mx-auto space-y-24">
                         <header className="text-center space-y-8 border-b border-red-900/20 pb-16">
-                            <h1 className="text-6xl md:text-8xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-red-400 leading-tight">{report.title}</h1>
+                            <h1 className="text-5xl md:text-8xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-red-400 leading-tight">{report.title}</h1>
                             <div className="flex items-center justify-center gap-4">
                                 <div className="h-[1px] w-12 bg-red-900/50"></div>
-                                <p className="text-red-500 uppercase tracking-[0.3em] text-xs font-black">Den Østlige Kronike</p>
+                                <p className="text-red-500 uppercase tracking-[0.3em] text-[10px] font-black">Den Østlige Kronike</p>
                                 <div className="h-[1px] w-12 bg-red-900/50"></div>
                             </div>
                         </header>
@@ -180,11 +194,49 @@ const ChineseAstrology: React.FC = () => {
                                 "{report.conclusion}"
                             </p>
                         </div>
+
+                        {/* 12 Month Energy Cycle Display */}
+                        <div className="pt-32 space-y-12">
+                            <div className="text-center space-y-2">
+                                <h3 className="text-5xl font-serif text-white">Ditt Kosmiske Årshjul</h3>
+                                <p className="text-[10px] uppercase font-black text-red-500 tracking-[0.4em]">Sjelelig energiprognose</p>
+                            </div>
+
+                            {isCycleLoading ? (
+                                <div className="py-20 text-center space-y-4">
+                                    <Loader2 className="animate-spin text-red-500 mx-auto" size={40} />
+                                    <p className="text-xs italic text-slate-500 font-light">Kanaliserer månedlige strømninger...</p>
+                                </div>
+                            ) : yearlyCycle ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+                                    {yearlyCycle.map((month, i) => (
+                                        <div key={i} className="bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem] space-y-6 hover:bg-white/[0.04] transition-all group">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">{month.monthName}</p>
+                                                    <h4 className="text-2xl font-serif text-red-100">{month.theme}</h4>
+                                                </div>
+                                                <div className="bg-red-500/10 px-3 py-1 rounded-full text-red-500 text-[10px] font-bold border border-red-500/20">
+                                                    Qi: {month.qiLevel}/10
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-gradient-to-r from-red-900 to-red-500" style={{ width: `${month.qiLevel * 10}%` }}></div>
+                                            </div>
+
+                                            <p className="text-slate-400 text-sm font-light leading-relaxed italic">
+                                                {month.guidance}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
                     </article>
                 )}
             </div>
         )}
-        {/* ... existing code ... */}
     </div>
   );
 };
