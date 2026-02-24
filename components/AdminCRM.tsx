@@ -19,6 +19,7 @@ const AdminCRM: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'master' | 'marketing'>('all');
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+  const [activeKPI, setActiveKPI] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [creditAmount, setCreditAmount] = useState<string>('10');
   const [isSending, setIsSending] = useState(false);
@@ -119,20 +120,144 @@ const AdminCRM: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
-            { label: 'Totale Sjeler', val: stats.totalUsers, icon: Users, color: 'text-blue-400' },
-            { label: 'Mester-medlemmer', val: stats.masterSubscribers, icon: Star, color: 'text-amber-400' },
-            { label: 'Total Inntjening', val: `€${stats.revenue}`, icon: CreditCard, color: 'text-green-400' },
-            { label: 'Markeds-mottakere', val: stats.marketingAccept, icon: Mail, color: 'text-purple-400' }
+            { id: 'souls',    label: 'Totale Sjeler',      val: stats.totalUsers,        icon: Users,       color: 'text-blue-400',   borderHover: 'hover:border-blue-500/40' },
+            { id: 'masters',  label: 'Mester-medlemmer',   val: stats.masterSubscribers, icon: Star,        color: 'text-amber-400',  borderHover: 'hover:border-amber-500/40' },
+            { id: 'revenue',  label: 'Total Inntjening',   val: `€${stats.revenue}`,     icon: CreditCard,  color: 'text-green-400',  borderHover: 'hover:border-green-500/40' },
+            { id: 'marketing',label: 'Markeds-mottakere',  val: stats.marketingAccept,   icon: Mail,        color: 'text-purple-400', borderHover: 'hover:border-purple-500/40' }
         ].map((stat, i) => (
-            <div key={i} className="bg-[#0f0f25] border border-white/5 p-8 rounded-[2.5rem] space-y-4 shadow-xl">
+            <div
+                key={i}
+                onClick={() => setActiveKPI(stat.id)}
+                className={`bg-[#0f0f25] border border-white/5 p-8 rounded-[2.5rem] space-y-4 shadow-xl cursor-pointer transition-all ${stat.borderHover} hover:bg-white/[0.03] hover:scale-[1.02]`}
+            >
                 <div className={`p-4 bg-white/5 rounded-2xl w-fit ${stat.color}`}><stat.icon size={24} /></div>
                 <div>
                     <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">{stat.label}</p>
                     <p className="text-3xl font-serif text-white">{stat.val}</p>
                 </div>
+                <p className="text-[9px] text-slate-600 uppercase font-black tracking-widest">Klikk for detaljer →</p>
             </div>
         ))}
       </div>
+
+      {/* KPI Detail Modal */}
+      {activeKPI && (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4" onClick={() => setActiveKPI(null)}>
+              <div className="bg-[#0f0f25] border border-white/10 w-full max-w-2xl rounded-[3rem] p-12 relative shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setActiveKPI(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+
+                  {activeKPI === 'souls' && (
+                      <div className="space-y-8">
+                          <div className="flex items-center gap-4">
+                              <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-400"><Users size={28} /></div>
+                              <div>
+                                  <h2 className="text-3xl font-serif text-white">Totale Sjeler</h2>
+                                  <p className="text-[10px] uppercase text-slate-500 font-black tracking-widest">{stats.totalUsers} registrerte brukere</p>
+                              </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4">
+                              {[
+                                  { label: 'Master', val: users.filter(u => u.subscription === 'Master').length, color: 'text-amber-400' },
+                                  { label: 'Single', val: users.filter(u => u.subscription === 'Single').length, color: 'text-indigo-400' },
+                                  { label: 'Gratis', val: users.filter(u => u.subscription === 'None').length, color: 'text-slate-400' },
+                              ].map((s, i) => (
+                                  <div key={i} className="bg-black/40 border border-white/5 p-6 rounded-2xl text-center">
+                                      <p className={`text-3xl font-serif ${s.color}`}>{s.val}</p>
+                                      <p className="text-[10px] uppercase font-black text-slate-500 mt-1">{s.label}</p>
+                                  </div>
+                              ))}
+                          </div>
+                          <div className="space-y-2">
+                              {users.map(u => (
+                                  <div key={u.id} className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5">
+                                      <div><p className="text-white font-serif">{u.name}</p><p className="text-xs text-slate-500">{u.email}</p></div>
+                                      <span className="text-[9px] font-black uppercase text-slate-400">Siden {u.joinedDate}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  {activeKPI === 'masters' && (
+                      <div className="space-y-8">
+                          <div className="flex items-center gap-4">
+                              <div className="p-4 bg-amber-500/10 rounded-2xl text-amber-400"><Star size={28} /></div>
+                              <div>
+                                  <h2 className="text-3xl font-serif text-white">Mester-medlemmer</h2>
+                                  <p className="text-[10px] uppercase text-slate-500 font-black tracking-widest">{stats.masterSubscribers} aktive mestre</p>
+                              </div>
+                          </div>
+                          <div className="space-y-3">
+                              {users.filter(u => u.subscription === 'Master').map(u => (
+                                  <div key={u.id} className="bg-black/40 border border-amber-500/10 p-6 rounded-2xl">
+                                      <div className="flex items-center justify-between">
+                                          <div><p className="text-white font-serif text-lg">{u.name}</p><p className="text-xs text-slate-500">{u.email}</p></div>
+                                          <div className="text-right">
+                                              <p className="text-amber-400 font-serif text-xl">€{u.totalSpent}</p>
+                                              <p className="text-[9px] text-slate-500 uppercase font-black">Siste bet. {u.lastPayment}</p>
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  {activeKPI === 'revenue' && (
+                      <div className="space-y-8">
+                          <div className="flex items-center gap-4">
+                              <div className="p-4 bg-green-500/10 rounded-2xl text-green-400"><CreditCard size={28} /></div>
+                              <div>
+                                  <h2 className="text-3xl font-serif text-white">Total Inntjening</h2>
+                                  <p className="text-[10px] uppercase text-slate-500 font-black tracking-widest">Akkumulert omsetning</p>
+                              </div>
+                          </div>
+                          <div className="bg-black/40 border border-green-500/10 p-10 rounded-2xl text-center">
+                              <p className="text-7xl font-serif text-green-400">€{stats.revenue}</p>
+                              <p className="text-[10px] uppercase font-black text-slate-500 mt-3 tracking-widest">Total inntjening fra alle kjøp</p>
+                          </div>
+                          <div className="space-y-2">
+                              {users.filter(u => u.totalSpent > 0).map(u => (
+                                  <div key={u.id} className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5">
+                                      <div><p className="text-white font-serif">{u.name}</p><p className="text-xs text-slate-500">{u.subscription}</p></div>
+                                      <span className="text-green-400 font-serif text-xl">€{u.totalSpent}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  {activeKPI === 'marketing' && (
+                      <div className="space-y-8">
+                          <div className="flex items-center gap-4">
+                              <div className="p-4 bg-purple-500/10 rounded-2xl text-purple-400"><Mail size={28} /></div>
+                              <div>
+                                  <h2 className="text-3xl font-serif text-white">Markeds-mottakere</h2>
+                                  <p className="text-[10px] uppercase text-slate-500 font-black tracking-widest">{stats.marketingAccept} har gitt samtykke</p>
+                              </div>
+                          </div>
+                          <div className="space-y-2">
+                              {users.map(u => (
+                                  <div key={u.id} className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5">
+                                      <div><p className="text-white font-serif">{u.name}</p><p className="text-xs text-slate-500">{u.email}</p></div>
+                                      {u.allowMarketing
+                                          ? <div className="flex items-center gap-2 text-green-500 text-[10px] font-black uppercase"><CheckCircle size={14} /> Ja</div>
+                                          : <div className="flex items-center gap-2 text-slate-600 text-[10px] font-black uppercase"><XCircle size={14} /> Nei</div>
+                                      }
+                                  </div>
+                              ))}
+                          </div>
+                          <button
+                              onClick={() => { setActiveKPI(null); setIsComposeModalOpen(true); }}
+                              className="w-full py-5 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center justify-center gap-3"
+                          >
+                              <Send size={16} /> Send E-post til alle med samtykke
+                          </button>
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
 
       {/* CRM Table */}
       <section className="bg-[#0a0a1a] border border-white/5 rounded-[3.5rem] overflow-hidden shadow-2xl">

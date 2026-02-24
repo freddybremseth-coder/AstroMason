@@ -566,9 +566,26 @@ export const COURSES: Course[] = [
 ];
 
 export const MAJOR_ARCANA = [
-  { id: 0, name: 'Narren', img: 'https://i.imgur.com/uRj0S9Z.jpg', keywords: ['Start', 'Uskyld', 'Risiko'] },
-  { id: 1, name: 'Magikeren', img: 'https://i.imgur.com/vH6v9S3.jpg', keywords: ['Manifestasjon', 'Kraft', 'Vilje'] },
-  { id: 2, name: 'Yppersteprestinnen', img: 'https://i.imgur.com/wP6p8q1.jpg', keywords: ['Intuisjon', 'Mysterier', 'Underbevissthet'] },
-  { id: 13, name: 'Døden', img: 'https://i.imgur.com/xQ7q9r2.jpg', keywords: ['Transformasjon', 'Slutt', 'Ny begynnelse'] },
-  { id: 16, name: 'Tårnet', img: 'https://i.imgur.com/yR8r0s3.jpg', keywords: ['Kaos', 'Åpenbaring', 'Brudd'] }
+  { id: 0,  name: 'Narren',              img: 'https://upload.wikimedia.org/wikipedia/commons/9/90/RWS_Tarot_00_Fool.jpg',               keywords: ['Start', 'Uskyld', 'Risiko'] },
+  { id: 1,  name: 'Magikeren',           img: 'https://upload.wikimedia.org/wikipedia/commons/d/de/RWS_Tarot_01_Magician.jpg',           keywords: ['Manifestasjon', 'Kraft', 'Vilje'] },
+  { id: 2,  name: 'Yppersteprestinnen', img: 'https://upload.wikimedia.org/wikipedia/commons/8/88/RWS_Tarot_02_High_Priestess.jpg',     keywords: ['Intuisjon', 'Mysterier', 'Underbevissthet'] },
+  { id: 3,  name: 'Keiserinnen',         img: 'https://upload.wikimedia.org/wikipedia/commons/d/d2/RWS_Tarot_03_Empress.jpg',            keywords: ['Fruktbarhet', 'Natur', 'Overflod'] },
+  { id: 4,  name: 'Keiseren',            img: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/RWS_Tarot_04_Emperor.jpg',            keywords: ['Autoritet', 'Struktur', 'Stabilitet'] },
+  { id: 5,  name: 'Ypperstepresten',     img: 'https://upload.wikimedia.org/wikipedia/commons/8/8d/RWS_Tarot_05_Hierophant.jpg',         keywords: ['Tradisjon', 'Spiritualitet', 'Veiledning'] },
+  { id: 6,  name: 'Elskerne',            img: 'https://upload.wikimedia.org/wikipedia/commons/3/3a/TheLovers.jpg',                       keywords: ['Kjærlighet', 'Valg', 'Union'] },
+  { id: 7,  name: 'Vognen',              img: 'https://upload.wikimedia.org/wikipedia/commons/9/9b/RWS_Tarot_07_Chariot.jpg',            keywords: ['Seier', 'Kontroll', 'Besluttsomhet'] },
+  { id: 8,  name: 'Styrken',             img: 'https://upload.wikimedia.org/wikipedia/commons/f/f5/RWS_Tarot_08_Strength.jpg',           keywords: ['Mot', 'Tålmodighet', 'Indre kraft'] },
+  { id: 9,  name: 'Eremiten',            img: 'https://upload.wikimedia.org/wikipedia/commons/4/4d/RWS_Tarot_09_Hermit.jpg',             keywords: ['Introspeksjon', 'Søken', 'Visdom'] },
+  { id: 10, name: 'Lykkens Hjul',        img: 'https://upload.wikimedia.org/wikipedia/commons/3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg',   keywords: ['Syklus', 'Karma', 'Skjebne'] },
+  { id: 11, name: 'Rettferdigheten',     img: 'https://upload.wikimedia.org/wikipedia/commons/e/e0/RWS_Tarot_11_Justice.jpg',            keywords: ['Balanse', 'Sannhet', 'Årsak-virkning'] },
+  { id: 12, name: 'Den Hengte',          img: 'https://upload.wikimedia.org/wikipedia/commons/2/2b/RWS_Tarot_12_Hanged_Man.jpg',         keywords: ['Overgivelse', 'Pause', 'Nytt perspektiv'] },
+  { id: 13, name: 'Døden',              img: 'https://upload.wikimedia.org/wikipedia/commons/d/d7/RWS_Tarot_13_Death.jpg',              keywords: ['Transformasjon', 'Slutt', 'Ny begynnelse'] },
+  { id: 14, name: 'Temperansen',         img: 'https://upload.wikimedia.org/wikipedia/commons/f/f8/RWS_Tarot_14_Temperance.jpg',         keywords: ['Balanse', 'Moderasjon', 'Flyt'] },
+  { id: 15, name: 'Djevelen',            img: 'https://upload.wikimedia.org/wikipedia/commons/5/55/RWS_Tarot_15_Devil.jpg',              keywords: ['Binding', 'Skygge', 'Materiell fristelse'] },
+  { id: 16, name: 'Tårnet',              img: 'https://upload.wikimedia.org/wikipedia/commons/5/53/RWS_Tarot_16_Tower.jpg',              keywords: ['Kaos', 'Åpenbaring', 'Brudd'] },
+  { id: 17, name: 'Stjernen',            img: 'https://upload.wikimedia.org/wikipedia/commons/d/db/RWS_Tarot_17_Star.jpg',               keywords: ['Håp', 'Inspirasjon', 'Fornyelse'] },
+  { id: 18, name: 'Månen',               img: 'https://upload.wikimedia.org/wikipedia/commons/7/7f/RWS_Tarot_18_Moon.jpg',               keywords: ['Illusjon', 'Underbevissthet', 'Frykt'] },
+  { id: 19, name: 'Solen',               img: 'https://upload.wikimedia.org/wikipedia/commons/1/17/RWS_Tarot_19_Sun.jpg',                keywords: ['Glede', 'Suksess', 'Vitalitet'] },
+  { id: 20, name: 'Dommen',              img: 'https://upload.wikimedia.org/wikipedia/commons/d/dd/RWS_Tarot_20_Judgement.jpg',          keywords: ['Oppvåkning', 'Tilgivelse', 'Transformasjon'] },
+  { id: 21, name: 'Verden',              img: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/RWS_Tarot_21_World.jpg',              keywords: ['Fullendelse', 'Integrering', 'Triumf'] },
 ];

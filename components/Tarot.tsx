@@ -61,6 +61,11 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
         return () => window.removeEventListener('storage', update);
     }, []);
 
+    useEffect(() => {
+        setReport('');
+        setCards([]);
+    }, [lang]);
+
     const handleDraw = () => {
         const sub = localStorage.getItem('soul_subscription');
         if (sub !== 'Master' && credits < 1) {

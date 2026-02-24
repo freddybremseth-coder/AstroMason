@@ -33,6 +33,10 @@ const Numerology: React.FC = () => {
   
   const COST = 3;
 
+  useEffect(() => {
+    setDeepAnalysis(null);
+  }, [lang]);
+
   const reduceNumber = (num: number, masterNumbers = [11, 22, 33]): number => {
       if (masterNumbers.includes(num)) return num;
       let s = num;
@@ -110,7 +114,7 @@ const Numerology: React.FC = () => {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-1.5-pro',
             contents: `Generer "Livsboken" (Grimoire) for ${fullName}. 
             DATA: Livsvei ${lp}, Uttrykk ${exp}, Soul Urge ${soul}, Personlighet ${pers}, Modenhet ${mat}.
             Karmiske Gjeldstall funnet: ${isKarmicDebt(lpRaw) ? '13/4' : ''} ${isKarmicDebt(expRaw) ? '14/5' : ''}.

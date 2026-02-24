@@ -58,6 +58,11 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
     }
   };
 
+  useEffect(() => {
+    setReport(null);
+    setShowDemo(false);
+  }, [lang]);
+
   const handleGenerate = () => {
       fetchHoroscope(period);
   };

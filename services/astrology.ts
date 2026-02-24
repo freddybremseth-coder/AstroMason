@@ -687,7 +687,7 @@ Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken.`;
   ) => {
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
     const cardsList = cards.map((c, i) =>
-      `Posisjon ${i + 1} (${spread.positions?.[i]?.meaning || 'Ukjent'}): ${c.name}${c.isReversed ? ' (Reversert)' : ''}`
+      `Posisjon ${i + 1} (${spread.positions?.[i] || 'Ukjent'}): ${c.card?.name || c.name || 'Ukjent'}${c.isReversed ? ' (Reversert)' : ''}`
     ).join('\n');
 
     const systemPrompt = `Du er AstroMasons Tarotmester — en dyp leser med innsikt i symbolikk, sjelsarkitektur og livsnavigasjon.
