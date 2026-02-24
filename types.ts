@@ -1,9 +1,43 @@
 
 import React from 'react';
 
-export type UserRole = 'client'; 
+export type UserRole = 'client';
 export type Language = 'no' | 'en' | 'es' | 'de' | 'fr' | 'it' | 'ru' | 'pl';
 export type AstrologyMode = 'esoteric' | 'classical' | 'merged' | 'vedic';
+
+export type ChartPatternType = 'Grand Trine' | 'T-Square' | 'Grand Cross' | 'Yod' | 'Stellium' | 'Kite' | 'Mystic Rectangle';
+
+export interface ChartPattern {
+  type: ChartPatternType;
+  planets: string[];
+  element?: string;
+  description: string;
+}
+
+export interface SynastryAspect {
+  planet1: string;
+  planet2: string;
+  person1Name: string;
+  person2Name: string;
+  type: string;
+  orb: number;
+  degree: number;
+  isHarmonious: boolean;
+  symbol?: string;
+}
+
+export interface EssentialDignity {
+  planet: string;
+  sign: string;
+  status: 'Rulership' | 'Exaltation' | 'Detriment' | 'Fall' | 'Peregrine';
+}
+
+export interface ElementBalance {
+  Ild: number;
+  Jord: number;
+  Luft: number;
+  Vann: number;
+}
 
 export enum MethodologyType {
   WESTERN_CLASSICAL = 'Western Classical',
@@ -108,9 +142,23 @@ export interface CalculatedChart {
   aspects: Aspect[];
   ascendant: string;
   ascendantDegree: number;
+  ascendantSign?: string;
   mc: string;
+  mcDegree?: number;
+  mcSign?: string;
   houseCusps: number[];
   quickSummary?: string;
+  // Professional analysis fields
+  patterns?: ChartPattern[];
+  chartRuler?: string;
+  chartRulerSign?: string;
+  chartRulerHouse?: number;
+  dominantElement?: string;
+  dominantModality?: string;
+  elementBalance?: ElementBalance;
+  modalityBalance?: { Kardinal: number; Fast: number; Mutable: number };
+  dignities?: EssentialDignity[];
+  partOfFortune?: { sign: string; degree: number; house: number; totalDegrees: number };
 }
 
 export interface NavItem {
