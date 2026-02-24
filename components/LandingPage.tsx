@@ -5,9 +5,10 @@ import { LangContext } from '../App';
 import { Language } from '../types';
 import { UI_TRANSLATIONS } from '../constants';
 import Logo from './Logo';
+import { authService, profileService, isSupabaseConfigured } from '../lib/supabase';
 
 interface LandingPageProps {
-  onLogin: (userData: { email: string; isAdmin: boolean }) => void;
+  onLogin: (userData: { email: string; isAdmin: boolean; userId: string }) => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
@@ -16,10 +17,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [allowMarketing, setAllowMarketing] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+  const [forgotSent, setForgotSent] = useState(false);
+
   const { lang, setLang } = useContext(LangContext);
   const [showLangMenu, setShowLangMenu] = useState(false);
 
@@ -32,53 +33,73 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // Superadmin Login (Freddy)
-    if (authMode === 'login' && cleanEmail === 'freddy.bremseth@gmail.com' && password === 'AllAstro1!') {
-        setTimeout(() => {
-            localStorage.setItem('tarot_credits', '200000');
-            localStorage.setItem('soul_subscription', 'Master');
-            onLogin({ email: cleanEmail, isAdmin: true });
-            setIsProcessing(false);
-        }, 1000);
-        return;
-    }
-
-    // Spesialbruker Login (Anna)
-    // Sjekker både donaanna og donnaanna for å være sikker
-    if (authMode === 'login' && (cleanEmail === 'anna@donaanna.com' || cleanEmail === 'anna@donnaanna.com') && password === '012345') {
-        setTimeout(() => {
-            localStorage.setItem('tarot_credits', '100000');
-            localStorage.setItem('soul_subscription', 'Single');
-            localStorage.setItem('soul_email', cleanEmail);
-            window.dispatchEvent(new Event('storage')); // Tving oppdatering av kredittvisning
-            onLogin({ email: cleanEmail, isAdmin: false });
-            setIsProcessing(false);
-        }, 800);
-        return;
-    }
-
-    if (authMode === 'login' && password !== '012345' && (cleanEmail.includes('anna@'))) {
-        setError("Feil passord for denne sjelsprofilen.");
-        setIsProcessing(false);
-        return;
-    }
-
-    if (authMode === 'forgot') {
-        alert("En gjenopprettingslenke er sendt til din e-post hvis kontoen eksisterer.");
-        setAuthMode('login');
-        setIsProcessing(false);
-        return;
-    }
-
-    // Standard login/reg for andre
-    setTimeout(() => {
-        localStorage.setItem('soul_email', cleanEmail);
-        if (authMode === 'register' && name) {
-            localStorage.setItem('soul_name', name);
+    try {
+      if (authMode === 'forgot') {
+        const { error: resetErr, isDemo } = await authService.resetPassword(cleanEmail);
+        if (resetErr) {
+          setError('Kunne ikke sende gjenopprettingslenke. Sjekk e-postadressen.');
+        } else {
+          setForgotSent(true);
+          if (isDemo) {
+            setError('Demo-modus: ingen e-post sendt. Koble til Supabase for ekte e-post.');
+          }
         }
-        onLogin({ email: cleanEmail, isAdmin: false });
         setIsProcessing(false);
-    }, 1000);
+        return;
+      }
+
+      if (authMode === 'register') {
+        const { user, error: signUpErr, isDemo } = await authService.signUp(cleanEmail, password, name);
+        if (signUpErr) {
+          const msg = (signUpErr as any).message || '';
+          if (msg.includes('already registered')) {
+            setError('E-posten er allerede registrert. Logg inn i stedet.');
+          } else if (msg.includes('Password')) {
+            setError('Passordet må være minst 6 tegn.');
+          } else {
+            setError(msg || 'Registrering mislyktes. Prøv igjen.');
+          }
+          setIsProcessing(false);
+          return;
+        }
+        if (user) {
+          const userId = user.id || cleanEmail;
+          if (!isDemo && isSupabaseConfigured) {
+            // Wait for trigger to create profile, then check admin
+            const isAdmin = await profileService.isAdmin(userId);
+            onLogin({ email: cleanEmail, isAdmin, userId });
+          } else {
+            onLogin({ email: cleanEmail, isAdmin: false, userId: userId });
+          }
+        }
+      } else {
+        // Login
+        const { user, error: signInErr, isDemo } = await authService.signIn(cleanEmail, password);
+        if (signInErr) {
+          const msg = (signInErr as any).message || '';
+          if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
+            setError('Feil e-post eller passord.');
+          } else if (msg.includes('Email not confirmed')) {
+            setError('Bekreft e-postadressen din først. Sjekk innboksen.');
+          } else {
+            setError(msg || 'Innlogging mislyktes. Prøv igjen.');
+          }
+          setIsProcessing(false);
+          return;
+        }
+        if (user) {
+          const userId = user.id || cleanEmail;
+          const isAdmin = isDemo ? false : await profileService.isAdmin(userId);
+          // Load profile into localStorage
+          await profileService.get(userId);
+          onLogin({ email: cleanEmail, isAdmin, userId });
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Noe gikk galt. Prøv igjen.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const languages: {code: Language, label: string, flag: string}[] = [
@@ -92,7 +113,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-[#050511] text-gray-100 font-sans selection:bg-gold-500/30 overflow-x-hidden">
-      
+
       <nav className="fixed top-0 w-full z-50 bg-[#050511]/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -113,8 +134,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     </div>
                 )}
             </div>
-            <button onClick={() => { setAuthMode('login'); setShowAuthModal(true); setError(null); }} className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">{t.login}</button>
-            <button onClick={() => { setAuthMode('register'); setShowAuthModal(true); setError(null); }} className="bg-white text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl">{t.startBtn}</button>
+            <button onClick={() => { setAuthMode('login'); setShowAuthModal(true); setError(null); setForgotSent(false); }} className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">{t.login}</button>
+            <button onClick={() => { setAuthMode('register'); setShowAuthModal(true); setError(null); setForgotSent(false); }} className="bg-white text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl">{t.startBtn}</button>
           </div>
         </div>
       </nav>
@@ -136,8 +157,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </button>
       </header>
 
-      {/* Resten av komponenten forblir uendret for enkelthets skyld i denne endringen */}
-      
       {showAuthModal && (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
           <div className="bg-[#0a0a16] border border-white/10 w-full max-w-md rounded-[3rem] p-12 relative shadow-2xl animate-in zoom-in-95 duration-300">
@@ -148,12 +167,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">{t.authDesc}</p>
             </div>
-            
+
+            {forgotSent ? (
+              <div className="text-center space-y-6">
+                <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto border border-green-500/20">
+                  <CircleCheck size={32} className="text-green-500" />
+                </div>
+                <p className="text-slate-300">Gjenopprettingslenke er sendt til <span className="text-amber-400">{email}</span></p>
+                <button onClick={() => { setForgotSent(false); setAuthMode('login'); }} className="text-[10px] font-black uppercase tracking-widest text-amber-500 hover:underline">Tilbake til innlogging</button>
+              </div>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                  <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-xs font-bold text-center animate-pulse">
+                  <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-xs font-bold text-center">
                       {error}
                   </div>
+              )}
+
+              {!isSupabaseConfigured && (
+                <div className="bg-amber-500/5 border border-amber-500/20 text-amber-500/80 p-3 rounded-xl text-[10px] font-bold text-center uppercase tracking-wider">
+                  Demo-modus · Koble til Supabase for ekte auth
+                </div>
               )}
 
               <div className="space-y-4">
@@ -162,7 +196,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 )}
                 <input type="email" placeholder={t.emailLabel} value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
                 {authMode !== 'forgot' && (
-                    <input type="password" placeholder={t.passLabel} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
+                    <input type="password" placeholder={t.passLabel} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required minLength={6} />
                 )}
               </div>
 
@@ -170,20 +204,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 {isProcessing ? <Loader2 size={18} className="animate-spin" /> : (authMode === 'login' ? t.loginBtn : authMode === 'register' ? t.regBtn : 'Send Gjenoppretting')}
               </button>
             </form>
+            )}
 
+            {!forgotSent && (
             <div className="mt-8 space-y-4 text-center">
                 {authMode === 'login' && (
-                    <button onClick={() => setAuthMode('forgot')} className="text-[9px] text-slate-500 hover:text-amber-500 uppercase font-black tracking-widest transition-colors block mx-auto">
+                    <button onClick={() => { setAuthMode('forgot'); setError(null); }} className="text-[9px] text-slate-500 hover:text-amber-500 uppercase font-black tracking-widest transition-colors block mx-auto">
                         Glemt passord?
                     </button>
                 )}
+                {authMode !== 'forgot' && (
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                {authMode === 'login' ? t.noAccount : t.hasAccount} 
+                {authMode === 'login' ? t.noAccount : t.hasAccount}
                 <button onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError(null); }} className="text-amber-500 ml-1 hover:underline underline-offset-8">
                     {t.clickHere}
                 </button>
                 </p>
+                )}
+                {authMode === 'forgot' && (
+                  <button onClick={() => { setAuthMode('login'); setError(null); }} className="text-[9px] text-slate-500 hover:text-amber-500 uppercase font-black tracking-widest transition-colors block mx-auto">
+                    ← Tilbake til innlogging
+                  </button>
+                )}
             </div>
+            )}
           </div>
         </div>
       )}

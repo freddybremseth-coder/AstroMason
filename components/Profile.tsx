@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { UserCircle, User, Key, History, Save, Download, FileText, BookOpen, Trash2, Shield, Lock, ExternalLink, Moon, Sun, Monitor, Printer, X, Loader2, CheckCircle, Info, MapPin, Calendar, Clock as ClockIcon, ChevronRight } from './Icons';
 import { ThemeContext, LangContext } from '../App';
 import { UI_TRANSLATIONS } from '../constants';
+import { profileService, reportsService } from '../lib/supabase';
 
 interface SoulData {
   name: string;
@@ -22,9 +23,10 @@ interface SavedReport {
 
 interface ProfileProps {
   onUpdate?: () => void;
+  userId?: string;
 }
 
-const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
+const Profile: React.FC<ProfileProps> = ({ onUpdate, userId }) => {
   const { theme, setTheme } = useContext(ThemeContext);
   const { lang } = useContext(LangContext);
   const t = UI_TRANSLATIONS[lang];
@@ -44,13 +46,15 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('astromason_reports');
-    if (saved) {
-      try { setSavedReports(JSON.parse(saved)); } catch (e) { console.error(e); }
-    }
-  }, []);
+    const loadReports = async () => {
+      const uid = userId || localStorage.getItem('soul_email') || '';
+      const { data } = await reportsService.getAll(uid);
+      setSavedReports(data || []);
+    };
+    loadReports();
+  }, [userId]);
 
-  const saveSoulData = () => {
+  const saveSoulData = async () => {
     const newErrors: Record<string, boolean> = {};
     if (!soulData.name) newErrors.name = true;
     if (!soulData.date) newErrors.date = true;
@@ -58,38 +62,25 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      alert("Noen av de kosmiske koordinatene mangler. Vennligst fyll ut de uthevede feltene.");
       return;
     }
 
     setErrors({});
     setIsSaving(true);
-    localStorage.setItem('soul_name', soulData.name);
-    localStorage.setItem('soul_date', soulData.date);
-    localStorage.setItem('soul_time', soulData.time || '12:00');
-    localStorage.setItem('soul_location', soulData.location);
-    localStorage.setItem('soul_houses', soulData.houseSystem);
-    
-    const email = (localStorage.getItem('soul_email') || '').toLowerCase();
 
-    // Spesialhåndtering for kreditter basert på e-post eller navn
-    if (email === 'freddy.bremseth@gmail.com' || soulData.name.toLowerCase().includes('freddy')) {
-        localStorage.setItem('tarot_credits', '200000');
-        localStorage.setItem('soul_subscription', 'Master');
-    } else if (email.includes('anna@do') || soulData.name.toLowerCase().includes('anna')) {
-        localStorage.setItem('tarot_credits', '100000');
-        localStorage.setItem('soul_subscription', 'Single');
-    }
+    const uid = userId || localStorage.getItem('soul_email') || '';
+    await profileService.upsert(uid, {
+      name: soulData.name,
+      birth_date: soulData.date,
+      birth_time: soulData.time || '12:00',
+      birth_location: soulData.location,
+      house_system: soulData.houseSystem,
+    });
 
-    setTimeout(() => {
-        setIsSaving(false);
-        setShowSuccess(true);
-        window.dispatchEvent(new Event('storage')); // Send event så App.tsx plukker det opp
-        if (onUpdate) {
-            onUpdate(); 
-        }
-        setTimeout(() => setShowSuccess(false), 2000);
-    }, 1200);
+    setIsSaving(false);
+    setShowSuccess(true);
+    if (onUpdate) onUpdate();
+    setTimeout(() => setShowSuccess(false), 2000);
   };
 
   const openReport = (saved: SavedReport) => {
@@ -104,11 +95,11 @@ const Profile: React.FC<ProfileProps> = ({ onUpdate }) => {
     }
   };
 
-  const deleteReport = (id: string) => {
+  const deleteReport = async (id: string) => {
     if(confirm("Er du sikker på at du vil slette denne innsikten?")) {
-        const updated = savedReports.filter(r => r.id !== id);
-        setSavedReports(updated);
-        localStorage.setItem('astromason_reports', JSON.stringify(updated));
+        const uid = userId || localStorage.getItem('soul_email') || '';
+        await reportsService.delete(uid, id);
+        setSavedReports(prev => prev.filter(r => r.id !== id));
     }
   };
 

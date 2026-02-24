@@ -1,133 +1,178 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Sparkles, User, Wallet } from './Icons';
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { MessageCircle, X, Send, Loader2, Sparkles } from './Icons';
+import { LangContext } from '../App';
+import Anthropic from '@anthropic-ai/sdk';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const getSystemPrompt = () => {
+  const name = localStorage.getItem('soul_name') || 'søkeren';
+  const sun = localStorage.getItem('soul_sun') || '';
+  const moon = localStorage.getItem('soul_moon') || '';
+  const asc = localStorage.getItem('soul_asc') || '';
+  const chartData = localStorage.getItem('soul_chart_summary') || '';
+
+  return `Du er AstroMason — en esoterisk astrologisk vismann og rådgiver for ${name}.
+Du snakker direkte, personlig og poetisk. Du kjenner ${name}s kart godt.
+
+${sun ? `Sol: ${sun}` : ''}
+${moon ? `Måne: ${moon}` : ''}
+${asc ? `Ascendant: ${asc}` : ''}
+${chartData ? `Planetposisjoner: ${chartData}` : ''}
+
+Svar alltid på samme språk som brukeren skriver på.
+Vær konkret, ikke generisk. Bruk ${name}s navn. Svar i 2-4 avsnitt.
+Ingen Markdown-tegn.`;
+};
 
 const AiAssistant: React.FC = () => {
+  const { lang } = useContext(LangContext);
   const [isOpen, setIsOpen] = useState(false);
-  const userEmail = localStorage.getItem('soul_email') || '';
-  
-  const [credits, setCredits] = useState<number>(() => {
-    const saved = localStorage.getItem('tarot_credits');
-    if (saved !== null) return parseInt(saved);
-    // Kun kreditt for Freddy
-    return userEmail === 'freddy.bremse@gmail.com' ? 200000 : 0;
-  });
-
-  const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
-    { role: 'assistant', content: 'Hei! Jeg er Astro Mason AI. Jeg kan gi deg dype tolkninger av ditt kart og transitter. Hver dype analyse koster 1 kreditt.' }
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: 'assistant',
+      content: `Hei! Jeg er AstroMason AI — din personlige kosmiske veileder. Spør meg om ditt kart, transitter, kjærlighet, karriere eller åndelig vekst. Jeg er her for deg.`
+    }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Kun kreditt for Freddy
-    if (userEmail === 'freddy.bremse@gmail.com' && credits <= 100000) {
-        setCredits(prev => prev + 100000);
-    }
-    localStorage.setItem('tarot_credits', credits.toString());
-  }, [credits, userEmail]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // Store chart data to localStorage when it's calculated (App.tsx should call this)
+  const storeChartContext = () => {
+    // Chart summary is stored by App.tsx after calculation
+    return localStorage.getItem('soul_chart_summary') || '';
   };
 
-  useEffect(scrollToBottom, [messages]);
-
   const handleSend = async () => {
-    if (!input.trim()) return;
-    
-    if (credits < 1) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Du har dessverre 0 kreditter. Gå til innstillinger for å fylle på slik at vi kan fortsette samtalen.' }]);
-        return;
-    }
+    if (!input.trim() || loading) return;
 
-    const userMsg = input;
+    const userMsg = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setLoading(true);
 
     try {
-        setCredits(prev => prev - 1);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const response = "Dine stjerner indikerer en kraftig transformasjon i ditt 4. hus akkurat nå. Pluto beveger seg sakte gjennom Steinbukken, noe som krever at du ser på dine røtter med nye øyne. Dette er en tid for å gi slipp på gamle strukturer for å gi plass til en mer autentisk grunnmur.";
-        
-        setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    } catch (error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Beklager, de kosmiske forbindelsene er midlertidig nede.' }]);
+      const client = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY || process.env.API_KEY || '',
+        dangerouslyAllowBrowser: true,
+      });
+
+      // Build message history for context (last 8 messages)
+      const history = messages.slice(-8).map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content
+      }));
+      history.push({ role: 'user', content: userMsg });
+
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: getSystemPrompt(),
+        messages: history,
+      });
+
+      const block = response.content[0];
+      const text = block.type === 'text' ? block.text : '';
+      setMessages(prev => [...prev, { role: 'assistant', content: text }]);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'De kosmiske arkivene er midlertidig utilgjengelige. Prøv igjen om et øyeblikk.'
+      }]);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
+  const subscription = localStorage.getItem('soul_subscription') || 'None';
+  const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
+  const hasAccess = subscription === 'Master' || credits > 0;
+
   return (
     <>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 ${isOpen ? 'bg-white dark:bg-space-800 text-gray-500 rotate-90 border border-gray-200' : 'bg-indigo-600 text-white'}`}
+        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 ${
+          isOpen
+            ? 'bg-[#0a0a16] border border-white/10 text-slate-400'
+            : 'bg-gradient-to-br from-amber-500 to-indigo-600 text-white'
+        }`}
       >
         {isOpen ? <X size={24} /> : <MessageCircle size={28} />}
       </button>
 
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[550px] bg-white dark:bg-space-950 border border-gray-200 dark:border-indigo-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-300">
-          
-          <div className="p-4 bg-gray-50 dark:bg-space-900 border-b border-gray-200 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
-                    <Sparkles size={20} />
-                </div>
-                <div>
-                    <h3 className="font-serif font-bold text-gray-900 dark:text-gray-100">AstroMason AI</h3>
-                    <p className="text-[9px] text-green-600 font-black uppercase">Deep Analyzer</p>
-                </div>
+        <div className="fixed bottom-24 right-6 z-50 w-96 h-[560px] bg-[#0a0a16] border border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+
+          <div className="p-5 bg-[#0d0d20] border-b border-white/5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-indigo-600/20 border border-white/10 flex items-center justify-center text-amber-500">
+              <Sparkles size={20} />
             </div>
-            <div className="text-right pr-2">
-                <p className="text-[8px] uppercase font-black text-slate-500">Kreditter</p>
-                <p className="text-sm font-serif text-amber-600">{credits.toLocaleString()}</p>
+            <div>
+              <h3 className="font-serif font-bold text-white text-sm">AstroMason AI</h3>
+              <p className="text-[9px] text-amber-500/70 font-black uppercase tracking-widest">Kosmisk Veileder</p>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-space-950/50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
-                        msg.role === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-tr-none shadow-md' 
-                        : 'bg-gray-100 dark:bg-space-800 text-gray-800 dark:text-gray-200 border border-gray-200 rounded-tl-none'
-                    }`}>
-                        {msg.content}
-                    </div>
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-amber-500/10 border border-amber-500/20 text-amber-100 rounded-tr-none'
+                    : 'bg-white/5 border border-white/5 text-slate-300 rounded-tl-none'
+                }`}>
+                  {msg.content}
                 </div>
+              </div>
             ))}
             {loading && (
-                <div className="flex justify-start">
-                    <div className="bg-gray-100 dark:bg-space-800 p-4 rounded-2xl rounded-tl-none border border-gray-200">
-                        <Loader2 size={16} className="animate-spin text-indigo-500" />
-                    </div>
+              <div className="flex justify-start">
+                <div className="bg-white/5 border border-white/5 p-4 rounded-2xl rounded-tl-none">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-amber-500/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-amber-500/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-amber-500/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
                 </div>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-4 bg-gray-50 dark:bg-space-900 border-t border-gray-200">
-            <div className="relative">
-                <input 
-                    type="text" 
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Spør om ditt horoskop (1 kreditt)..."
-                    className="w-full bg-white dark:bg-space-950 border border-gray-300 dark:border-space-700 rounded-full py-3 pl-4 pr-12 text-sm focus:border-indigo-500 outline-none"
+          <div className="p-4 border-t border-white/5">
+            {!hasAccess ? (
+              <p className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Trenger kreditter eller Master-abonnement
+              </p>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSend()}
+                  placeholder="Spør AstroMason..."
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500/50 placeholder-slate-600"
                 />
-                <button 
-                    onClick={handleSend}
-                    disabled={loading || !input.trim()}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                <button
+                  onClick={handleSend}
+                  disabled={loading || !input.trim()}
+                  className="p-3 bg-amber-500 text-black rounded-xl hover:bg-amber-400 disabled:opacity-30 transition-all"
                 >
-                    <Send size={16} />
+                  <Send size={18} />
                 </button>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}

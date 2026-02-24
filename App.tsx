@@ -14,9 +14,14 @@ import AdminCRM from './components/AdminCRM';
 import Settings from './components/Settings';
 import Tools from './components/Tools';
 import Logo from './components/Logo';
+import SolarReturn from './components/SolarReturn';
+import Progressions from './components/Progressions';
+import TransitCalendar from './components/TransitCalendar';
+import AiAssistant from './components/AiAssistant';
 import { AstrologyService } from './services/astrology';
 import { CalculatedChart, Language, PlanetPosition, AstrologyMode } from './types';
 import { UI_TRANSLATIONS } from './constants';
+import { authService, profileService } from './lib/supabase';
 
 export const LangContext = createContext<{lang: Language, setLang: (l: Language) => void}>({} as any);
 export const ThemeContext = createContext<{theme: 'light' | 'dark', setTheme: (t: 'light' | 'dark') => void}>({} as any);
@@ -26,7 +31,7 @@ export default function AstroMasonApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); 
-  const [astrologySubTab, setAstrologySubTab] = useState<'chart' | 'horoscope' | 'livsbok'>('chart');
+  const [astrologySubTab, setAstrologySubTab] = useState<'chart' | 'horoscope' | 'livsbok' | 'solretur' | 'progresjon' | 'kalender'>('chart');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [natalChart, setNatalChart] = useState<CalculatedChart | null>(null);
@@ -44,6 +49,7 @@ export default function AstroMasonApp() {
   
   const [userCredits, setUserCredits] = useState<number>(0);
   const [subscription, setSubscription] = useState<string>('None');
+  const [userId, setUserId] = useState<string>('');
 
   const t = UI_TRANSLATIONS[lang];
 
@@ -69,6 +75,13 @@ export default function AstroMasonApp() {
       const chart = await AstrologyService.calculateChart(birthData, astrologyMode);
       setNatalChart(chart);
       setActiveChart(chart);
+      // Store key chart data for AI chat context
+      const sun = chart.positions.find(p => p.name === 'Solen');
+      const moon = chart.positions.find(p => p.name === 'Månen');
+      if (sun) localStorage.setItem('soul_sun', `${sun.sign} ${sun.degree}°, Hus ${sun.house}`);
+      if (moon) localStorage.setItem('soul_moon', `${moon.sign} ${moon.degree}°, Hus ${moon.house}`);
+      localStorage.setItem('soul_asc', chart.ascendant);
+      localStorage.setItem('soul_chart_summary', chart.positions.slice(0, 10).map(p => `${p.name}: ${p.sign} ${p.degree}°`).join(', '));
     } catch (e) {
       console.error("Klarte ikke å laste kartdata", e);
     } finally {
@@ -93,13 +106,23 @@ export default function AstroMasonApp() {
     window.addEventListener('storage', updateStats);
     window.addEventListener('navigate', handleNavigate as any);
     
-    const email = localStorage.getItem('soul_email');
-    if (email) {
+    // Check for existing Supabase session or localStorage fallback
+    authService.getSession().then(({ user }) => {
+      if (user) {
+        const uid = user.id || user.email || '';
+        setUserId(uid);
+        setIsAdmin(false);
         setIsAuthenticated(true);
+        profileService.get(uid).then(({ data }) => {
+          if (data?.is_admin) setIsAdmin(true);
+          if (data?.subscription) setSubscription(data.subscription);
+          if (data?.credits !== undefined) setUserCredits(data.credits);
+        });
         refreshNatalData(true);
-    } else {
+      } else {
         setIsInitialLoading(false);
-    }
+      }
+    });
 
     const interval = setInterval(updateStats, 2000);
     return () => {
@@ -109,11 +132,12 @@ export default function AstroMasonApp() {
     };
   }, []);
 
-  const handleLogin = (userData: { email: string; isAdmin: boolean }) => {
+  const handleLogin = (userData: { email: string; isAdmin: boolean; userId: string }) => {
     setIsAuthenticated(true);
     setIsAdmin(userData.isAdmin);
+    setUserId(userData.userId);
     localStorage.setItem('soul_email', userData.email.toLowerCase());
-    
+
     const hasName = localStorage.getItem('soul_name');
     const hasDate = localStorage.getItem('soul_date');
     const isProfileComplete = hasName && hasDate;
@@ -211,10 +235,12 @@ export default function AstroMasonApp() {
           }} 
           isMobileOpen={isMobileMenuOpen} 
           setIsMobileOpen={setIsMobileMenuOpen} 
-          onLogout={() => { 
-            localStorage.clear(); 
-            setIsAuthenticated(false); 
-            setIsAdmin(false); 
+          onLogout={async () => {
+            await authService.signOut();
+            localStorage.clear();
+            setIsAuthenticated(false);
+            setIsAdmin(false);
+            setUserId('');
             setNatalChart(null);
             setActiveChart(null);
           }}
@@ -254,7 +280,7 @@ export default function AstroMasonApp() {
             else setActiveTab(view);
           }} />}
               {activeTab === 'chinese' && <ChineseAstrology />}
-              {activeTab === 'profile' && <Profile onUpdate={() => { refreshNatalData(true); setActiveTab('dashboard'); }} />}
+              {activeTab === 'profile' && <Profile onUpdate={() => { refreshNatalData(true); setActiveTab('dashboard'); }} userId={userId} />}
               {activeTab === 'tarot' && <Tarot onNavigateToSettings={() => setActiveTab('settings')} />}
               {activeTab === 'numerology' && <Numerology />}
               {activeTab === 'crm' && isAdmin && <AdminCRM />}
@@ -282,13 +308,16 @@ export default function AstroMasonApp() {
                           <h2 className="text-5xl font-serif font-bold text-white">Astrologi Hub</h2>
                           <p className="text-slate-500 text-xs uppercase tracking-[0.4em] font-black">Ditt kosmiske kompass</p>
                       </div>
-                      <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10 no-print">
+                      <div className="flex flex-wrap gap-1 bg-white/5 p-1.5 rounded-2xl border border-white/10 no-print">
                          {[
-                             { id: 'chart', label: 'Stjernekart', icon: Sun },
+                             { id: 'chart', label: 'Kart', icon: Sun },
                              { id: 'horoscope', label: 'Horoskop', icon: Calendar },
-                             { id: 'livsbok', label: 'Livsboken', icon: Scroll }
+                             { id: 'livsbok', label: 'Livsbok', icon: Scroll },
+                             { id: 'solretur', label: 'Solretur', icon: Zap },
+                             { id: 'progresjon', label: 'Progresjon', icon: RefreshCw },
+                             { id: 'kalender', label: 'Kalender', icon: Star },
                          ].map(tab => (
-                             <button key={tab.id} onClick={() => { setAstrologySubTab(tab.id as any); setShowReport(false); }} className={`px-6 py-3 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${astrologySubTab === tab.id ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>
+                             <button key={tab.id} onClick={() => { setAstrologySubTab(tab.id as any); setShowReport(false); }} className={`px-4 py-3 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${astrologySubTab === tab.id ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>
                                  <tab.icon size={14} /> {tab.label}
                              </button>
                          ))}
@@ -324,6 +353,13 @@ export default function AstroMasonApp() {
                    )}
 
                    {astrologySubTab === 'horoscope' && <Horoscope natalChart={natalChart} />}
+                   {astrologySubTab === 'solretur' && natalChart && <SolarReturn natalChart={natalChart} />}
+                   {astrologySubTab === 'progresjon' && natalChart && (
+                     <Progressions
+                       natalChart={natalChart}
+                     />
+                   )}
+                   {astrologySubTab === 'kalender' && natalChart && <TransitCalendar natalChart={natalChart} />}
 
                    {astrologySubTab === 'livsbok' && (
                      <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
@@ -396,6 +432,7 @@ export default function AstroMasonApp() {
           )}
         </main>
       </div>
+      <AiAssistant />
     </ThemeContext.Provider>
     </LangContext.Provider>
   );

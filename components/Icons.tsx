@@ -24,6 +24,7 @@ export const Printer = createIcon(<><polyline points="6 9 6 2 18 2 18 9"/><path 
 export const Save = createIcon(<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>);
 export const Scroll = createIcon(<><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/></>);
 export const ChevronRight = createIcon(<path d="m9 18 6-6-6-6" />);
+export const ChevronLeft = createIcon(<path d="m15 18-6-6 6-6" />);
 export const Loader2 = createIcon(<path d="M21 12a9 9 0 1 1-6.219-8.56" />);
 export const Wallet = createIcon(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></>);
 export const CreditCard = createIcon(<><rect width="20" height="14" x="2" y="5" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/></>);

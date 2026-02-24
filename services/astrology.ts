@@ -37,7 +37,39 @@ const PLANET_MAP: Record<string, string> = {
 
 const PLANET_SYMBOLS: Record<string, string> = {
   'Solen': '☉', 'Månen': '☽', 'Merkur': '☿', 'Venus': '♀', 'Mars': '♂',
-  'Jupiter': '♃', 'Saturn': '♄', 'Uranus': '♅', 'Neptun': '♆', 'Pluto': '♇'
+  'Jupiter': '♃', 'Saturn': '♄', 'Uranus': '♅', 'Neptun': '♆', 'Pluto': '♇',
+  'Chiron': '⚷', 'Lilith': '⚸'
+};
+
+// ─── Chiron & Black Moon Lilith (simplified ephemeris) ────────────────────
+
+const J2000 = 2451545.0; // Julian date for J2000.0
+
+const getJulianDate = (d: Date): number =>
+  d.getTime() / 86400000 + 2440587.5;
+
+/** Chiron: period ~50.7 yrs, J2000.0 position ~246.24° */
+const calcChiron = (dateUTC: Date, isVedic = false): PlanetPosition => {
+  const daysSinceJ2000 = getJulianDate(dateUTC) - J2000;
+  const lon = ((246.24 + daysSinceJ2000 * 0.01944) % 360 + 360) % 360;
+  const d = getZodiacDetails(lon, isVedic);
+  return {
+    name: 'Chiron', symbol: '⚷',
+    sign: d.sign, degree: d.degree, minute: d.minute,
+    house: 1, isRetrograde: false, totalDegrees: d.totalDegrees
+  };
+};
+
+/** Black Moon Lilith (Mean): daily motion ~0.11140°, J2000.0 ~263.35° */
+const calcLilith = (dateUTC: Date, isVedic = false): PlanetPosition => {
+  const daysSinceJ2000 = getJulianDate(dateUTC) - J2000;
+  const lon = ((263.35 + daysSinceJ2000 * 0.11140) % 360 + 360) % 360;
+  const d = getZodiacDetails(lon, isVedic);
+  return {
+    name: 'Lilith', symbol: '⚸',
+    sign: d.sign, degree: d.degree, minute: d.minute,
+    house: 1, isRetrograde: false, totalDegrees: d.totalDegrees
+  };
 };
 
 const ASPECT_TYPES = [
@@ -352,7 +384,7 @@ export const AstrologyService = {
       const d = getZodiacDetails(ecl.elon, isVedic);
       const name = PLANET_MAP[b];
 
-      // Simple retrograde: check if longitude decreasing
+      // Retrograde: check if longitude decreasing vs 24h ago
       const timeMinus1 = astro.MakeTime(new Date(dateUTC.getTime() - 86400000));
       const vecPrev = astro.GeoVector(astro.Body[b], timeMinus1, true);
       const eclPrev = astro.Ecliptic(vecPrev);
@@ -364,6 +396,10 @@ export const AstrologyService = {
         house: 1, isRetrograde, totalDegrees: d.totalDegrees
       };
     });
+
+    // Add Chiron and Black Moon Lilith
+    positions.push(calcChiron(dateUTC, isVedic));
+    positions.push(calcLilith(dateUTC, isVedic));
 
     // Ascendant calculation (Placidus-like)
     const sidereal = astro.SiderealTime(time);
@@ -385,10 +421,51 @@ export const AstrologyService = {
     const mc_deg = ((mc_rad * 180 / Math.PI) + 360) % 360;
     const mc = getZodiacDetails(mc_deg, isVedic);
 
-    // Assign houses (equal house system)
-    positions.forEach(p => {
-      p.house = Math.floor(((p.totalDegrees - asc.totalDegrees + 360) % 360) / 30) + 1;
-    });
+    // ── House cusps & assignment ──────────────────────────────────────────
+    let houseCuspsRaw: number[];
+
+    if (data.houseSystem === 'Whole Sign') {
+      // Whole Sign: each house = complete sign, House 1 = ASC sign
+      const ascSignIndex = Math.floor(asc.totalDegrees / 30);
+      houseCuspsRaw = Array.from({ length: 12 }, (_, i) => ((ascSignIndex + i) % 12) * 30);
+      positions.forEach(p => {
+        const pSignIndex = Math.floor(p.totalDegrees / 30);
+        p.house = ((pSignIndex - ascSignIndex + 12) % 12) + 1;
+      });
+    } else if (data.houseSystem === 'Placidus') {
+      // Placidus: MC/ASC anchored, intermediate cusps via trisection of semi-arc
+      const mc11 = (mc_deg + (asc_deg - mc_deg + 360) % 360 / 3) % 360;
+      const mc12 = (mc_deg + 2 * ((asc_deg - mc_deg + 360) % 360 / 3)) % 360;
+      const h2   = (asc_deg + ((mc_deg + 180 - asc_deg + 360) % 360) / 3) % 360;
+      const h3   = (asc_deg + 2 * ((mc_deg + 180 - asc_deg + 360) % 360 / 3)) % 360;
+      houseCuspsRaw = [
+        asc_deg,       h2,            h3,
+        (mc_deg + 180) % 360, (mc11 + 180) % 360, (mc12 + 180) % 360,
+        (asc_deg + 180) % 360, (h2 + 180) % 360, (h3 + 180) % 360,
+        mc_deg,        mc11,          mc12,
+      ];
+      positions.forEach(p => {
+        let house = 1;
+        for (let i = 0; i < 12; i++) {
+          const cusp = houseCuspsRaw[i];
+          const nextCusp = houseCuspsRaw[(i + 1) % 12];
+          let inHouse: boolean;
+          if (cusp <= nextCusp) {
+            inHouse = p.totalDegrees >= cusp && p.totalDegrees < nextCusp;
+          } else {
+            inHouse = p.totalDegrees >= cusp || p.totalDegrees < nextCusp;
+          }
+          if (inHouse) { house = i + 1; break; }
+        }
+        p.house = house;
+      });
+    } else {
+      // Equal House (default)
+      houseCuspsRaw = Array.from({ length: 12 }, (_, i) => (asc.totalDegrees + i * 30) % 360);
+      positions.forEach(p => {
+        p.house = Math.floor(((p.totalDegrees - asc.totalDegrees + 360) % 360) / 30) + 1;
+      });
+    }
 
     const aspects = calculateAspects(positions);
     const elementBalance = calculateElementBalance(positions);
@@ -416,9 +493,6 @@ export const AstrologyService = {
     const partOfFortune = calculatePartOfFortune(sun, moon, asc.totalDegrees, isNightChart);
     partOfFortune.house = Math.floor(((partOfFortune.totalDegrees - asc.totalDegrees + 360) % 360) / 30) + 1;
 
-    // House cusps (equal house)
-    const houseCusps = Array.from({ length: 12 }, (_, i) => (asc.totalDegrees + i * 30) % 360);
-
     return {
       clientName: data.name,
       date: data.date,
@@ -433,7 +507,7 @@ export const AstrologyService = {
       mc: `${mc.sign} ${mc.degree}°`,
       mcDegree: mc.totalDegrees,
       mcSign: mc.sign,
-      houseCusps,
+      houseCusps: houseCuspsRaw,
       patterns,
       chartRuler: chartRulerName,
       chartRulerSign: chartRulerPlanet?.sign,
@@ -827,6 +901,175 @@ Returner JSON:
       karmaticThemes: cleanAstroText(data.karmaticThemes || ''),
       guidance: cleanAstroText(data.guidance || ''),
     };
+  },
+
+  // ── Solar Return ─────────────────────────────────────────────────────────
+
+  calculateSolarReturn: async (
+    natalChart: CalculatedChart,
+    targetYear: number,
+    mode: AstrologyMode = 'merged'
+  ): Promise<CalculatedChart> => {
+    const astro = window.Astronomy;
+    const natalSun = natalChart.positions.find(p => p.name === 'Solen');
+    if (!natalSun) throw new Error('Natal solposisjon mangler');
+
+    const natalSunLon = natalSun.totalDegrees;
+    const birthLocation = natalChart.location;
+    const coords = natalChart.coords || await AstrologyService.geocode(birthLocation);
+    const isVedic = mode === 'vedic';
+
+    // Binary search for the exact moment when sun returns to natal longitude
+    let lo = new Date(targetYear, 0, 1);
+    let hi = new Date(targetYear, 11, 31);
+
+    for (let iter = 0; iter < 50; iter++) {
+      const mid = new Date((lo.getTime() + hi.getTime()) / 2);
+      const time = astro.MakeTime(mid);
+      const vec = astro.GeoVector(astro.Body.Sun, time, true);
+      const ecl = astro.Ecliptic(vec);
+      const sunLon = getZodiacDetails(ecl.elon, isVedic).totalDegrees;
+
+      let diff = sunLon - natalSunLon;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+
+      if (Math.abs(diff) < 0.001) break;
+      if (diff > 0) hi = mid;
+      else lo = mid;
+    }
+
+    const srDate = new Date((lo.getTime() + hi.getTime()) / 2);
+    const srDateStr = srDate.toISOString().split('T')[0];
+    const srTimeStr = `${String(srDate.getUTCHours()).padStart(2, '0')}:${String(srDate.getUTCMinutes()).padStart(2, '0')}`;
+
+    return AstrologyService.calculateChart(
+      {
+        name: `Solretur ${targetYear} — ${natalChart.clientName}`,
+        date: srDateStr,
+        time: srTimeStr,
+        location: birthLocation,
+        houseSystem: natalChart.houseCusps.length > 0 ? 'Placidus' : 'Equal',
+      },
+      mode,
+      coords
+    );
+  },
+
+  generateSolarReturnReport: async (
+    natalChart: CalculatedChart,
+    srChart: CalculatedChart,
+    lang: Language
+  ) => {
+    const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
+    const srPlanets = srChart.positions
+      .map(p => `${p.name}${p.isRetrograde ? '(R)' : ''}: ${p.sign} ${p.degree}°, Hus ${p.house}`)
+      .join(' | ');
+
+    const systemPrompt = `Du er AstroMason Solretur-analytiker. Analyser et solreturkart for å gi konkret veiledning for det kommende året. Ingen Markdown.`;
+    const userMessage = `Analyser solreturen for ${natalChart.clientName} på ${targetLang}.
+
+NATAL NØKKELPUNKTER:
+Sol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}
+Ascendant natal: ${natalChart.ascendant}
+
+SOLRETURKART (${srChart.date}):
+Ascendant SR: ${srChart.ascendant}
+MC SR: ${srChart.mc}
+${srPlanets}
+
+Skriv 5 avsnitt (600+ ord totalt):
+1. Årets overordnede energi og tema
+2. Karriere og økonomi
+3. Kjærlighet og relasjoner
+4. Indre vekst og utfordringer
+5. Beste måneder og timing for handling`;
+
+    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3500);
+    return cleanAstroText(raw);
+  },
+
+  // ── Secondary Progressions ───────────────────────────────────────────────
+
+  calculateProgressions: async (
+    natalData: { name: string; date: string; time: string; location: string; houseSystem: string },
+    targetDate: string,
+    mode: AstrologyMode = 'merged'
+  ): Promise<CalculatedChart> => {
+    const birthDate = new Date(natalData.date + 'T' + (natalData.time || '12:00') + ':00Z');
+    const target = new Date(targetDate);
+
+    // 1 day after birth = 1 year of life
+    const yearsElapsed = (target.getTime() - birthDate.getTime()) / (365.25 * 24 * 3600 * 1000);
+    const progressedDate = new Date(birthDate.getTime() + yearsElapsed * 24 * 3600 * 1000);
+
+    const progDateStr = progressedDate.toISOString().split('T')[0];
+    const progTimeStr = `${String(progressedDate.getUTCHours()).padStart(2, '0')}:${String(progressedDate.getUTCMinutes()).padStart(2, '0')}`;
+
+    const coords = natalData.location ? await AstrologyService.geocode(natalData.location) : undefined;
+
+    return AstrologyService.calculateChart(
+      {
+        name: `Progresjon ${targetDate} — ${natalData.name}`,
+        date: progDateStr,
+        time: progTimeStr,
+        location: natalData.location,
+        houseSystem: natalData.houseSystem,
+      },
+      mode,
+      coords
+    );
+  },
+
+  generateProgressionReport: async (
+    natalChart: CalculatedChart,
+    progChart: CalculatedChart,
+    lang: Language
+  ) => {
+    const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
+    const progPlanets = progChart.positions
+      .filter(p => ['Solen', 'Månen', 'Merkur', 'Venus', 'Mars', 'Chiron', 'Lilith'].includes(p.name))
+      .map(p => `${p.name}${p.isRetrograde ? '(R)' : ''}: ${p.sign} ${p.degree}°, Hus ${p.house}`)
+      .join('\n');
+
+    // Cross-aspects between natal and progressed
+    const crossAspects: string[] = [];
+    for (const np of natalChart.positions.slice(0, 7)) {
+      for (const pp of progChart.positions.slice(0, 7)) {
+        const diff = Math.abs(np.totalDegrees - pp.totalDegrees);
+        const angle = diff > 180 ? 360 - diff : diff;
+        if (Math.abs(angle) <= 2) crossAspects.push(`Natal ${np.name} konj. Prog. ${pp.name} (${np.sign})`);
+        else if (Math.abs(angle - 180) <= 2) crossAspects.push(`Natal ${np.name} opp. Prog. ${pp.name}`);
+        else if (Math.abs(angle - 90) <= 2) crossAspects.push(`Natal ${np.name} kv. Prog. ${pp.name}`);
+        else if (Math.abs(angle - 120) <= 2) crossAspects.push(`Natal ${np.name} tr. Prog. ${pp.name}`);
+      }
+    }
+
+    const systemPrompt = `Du er AstroMasons Progresjonsanalytiker. Bruk sekundære progresjoner for å avsløre sjels-utvikling og livstemata. Ingen Markdown.`;
+    const userMessage = `Analyser progresjonskart for ${natalChart.clientName} på ${targetLang}.
+
+NATAL NØKKELPUNKTER:
+Sol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}
+Måne natal: ${natalChart.positions.find(p => p.name === 'Månen')?.sign}
+Ascendant: ${natalChart.ascendant}
+
+PROGRESERTE PLANETER (${progChart.date}):
+${progPlanets}
+Progresert Ascendant: ${progChart.ascendant}
+Progresert MC: ${progChart.mc}
+
+KRYSS-ASPEKTER (natal → progresert):
+${crossAspects.slice(0, 8).join('\n') || 'Ingen eksakte aspekter'}
+
+Skriv 5 avsnitt (600+ ord totalt):
+1. Progresert sol og livsretning nå
+2. Progresert måne og emosjonelt klima
+3. Aktiverte livstemata og karmiske mønstre
+4. Progresjonshovedtemaer neste 2-3 år
+5. Råd: hva er sjelen klar for å ta tak i nå?`;
+
+    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3500);
+    return cleanAstroText(raw);
   },
 
   // ── Numerology AI ────────────────────────────────────────────────────────
