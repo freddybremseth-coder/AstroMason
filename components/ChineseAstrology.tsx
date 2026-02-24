@@ -34,6 +34,12 @@ const ChineseAstrology: React.FC = () => {
   
   const COST = 3;
 
+  useEffect(() => {
+    setReport(null);
+    setYearlyCycle(null);
+    setResults(null);
+  }, [lang]);
+
   const calculate = async () => {
     if (!name || !date) return;
 

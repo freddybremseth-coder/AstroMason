@@ -248,7 +248,11 @@ export default function AstroMasonApp() {
             </div>
           ) : (
             <div className="max-w-7xl mx-auto">
-              {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
+          {activeTab === 'dashboard' && <Dashboard onNavigate={(view) => {
+            if (view === 'horoscope') { setActiveTab('astrology'); setAstrologySubTab('horoscope'); }
+            else if (view === 'livsbok') { setActiveTab('astrology'); setAstrologySubTab('livsbok'); }
+            else setActiveTab(view);
+          }} />}
               {activeTab === 'chinese' && <ChineseAstrology />}
               {activeTab === 'profile' && <Profile onUpdate={() => { refreshNatalData(true); setActiveTab('dashboard'); }} />}
               {activeTab === 'tarot' && <Tarot onNavigateToSettings={() => setActiveTab('settings')} />}

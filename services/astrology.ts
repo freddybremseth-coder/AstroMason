@@ -630,21 +630,54 @@ JSON-format:
     const sunSign = natalChart.positions.find(p => p.name === 'Solen')?.sign || '';
     const moonSign = natalChart.positions.find(p => p.name === 'Månen')?.sign || '';
     const ascSign = natalChart.ascendantSign || natalChart.ascendant.split(' ')[0];
+    const todayStr = new Date().toLocaleDateString('no-NO', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    const systemPrompt = `Du er AstroMason — en skarpsindig astrologisk veileder. Skriv personlige horoskoper basert på faktiske planetposisjoner.
-Ingen Markdown-formatering. Skriv direkte og personlig.`;
+    const keyAspects = natalChart.aspects
+      .filter(a => ['Konjunksjon', 'Opposisjon', 'Trigon', 'Kvadrat'].includes(a.type))
+      .slice(0, 8)
+      .map(a => `${a.planet1} ${a.type} ${a.planet2} (orb ${a.orb}°)`)
+      .join(', ');
 
-    const userMessage = `Skriv et personlig horoskop på ${targetLang} for ${natalChart.clientName}.
-Periode: ${period}
-Sol: ${sunSign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}
-Måne: ${moonSign}, Hus ${natalChart.positions.find(p => p.name === 'Månen')?.house}
-Ascendant: ${ascSign}
-Chartruler: ${natalChart.chartRuler} i ${natalChart.chartRulerSign}
-Dominante element: ${natalChart.dominantElement}
+    const personalPlanets = ['Solen', 'Månen', 'Merkur', 'Venus', 'Mars'];
+    const personalCtx = natalChart.positions
+      .filter(p => personalPlanets.includes(p.name))
+      .map(p => `${p.name}${p.isRetrograde ? '(R)' : ''}: ${p.sign} ${p.degree}°, Hus ${p.house}`)
+      .join(' | ');
 
-Skriv 3-4 kraftfulle avsnitt. Inkluder konkrete råd, energier og timing.`;
+    const systemPrompt = `Du er AstroMason — en mesterlig astrologisk veileder med dyp innsikt i transitter og natale mønstre.
+Skriv personlige, konkrete horoskoper som oppleves skreddersydd til denne personen.
+Inkluder spesifikke livsområder: kjærlighet, karriere, økonomi, helse og indre vekst.
+Ingen Markdown. Skriv direkte, varmt og med astrologisk presisjon.`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 2048);
+    const periodMap: Record<string, string> = {
+      day: 'DAGEN i dag (' + todayStr + ')',
+      week: 'UKEN som starter ' + todayStr,
+      month: 'MÅNEDEN vi er i',
+      year: 'HELE ÅRET fremover'
+    };
+
+    const userMessage = `Skriv et dypt personlig horoskop på ${targetLang} for ${natalChart.clientName}.
+
+PERIODE: ${periodMap[period] || period}
+
+NATAL KART:
+${personalCtx}
+Ascendant: ${ascSign} | Chartruler: ${natalChart.chartRuler} i ${natalChart.chartRulerSign}, Hus ${natalChart.chartRulerHouse}
+Dominante element: ${natalChart.dominantElement} | Modalitet: ${natalChart.dominantModality}
+
+VIKTIGE NATALE ASPEKTER:
+${keyAspects || 'Ingen dominante aspekter'}
+
+Skriv 5 kraftfulle avsnitt (${period === 'year' ? '600+' : '400+'} ord totalt):
+1. Overordnet energi og tema for perioden
+2. Kjærlighet, relasjoner og følelsesliv
+3. Karriere, økonomi og kreativitet
+4. Indre vekst, åndelig utvikling og selvrefleksjon
+5. Konkrete råd og timing — hva bør gjøres nå?
+
+Bruk ${natalChart.clientName}s navn direkte. Vær spesifikk på tegn og hus.`;
+
+    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3500);
     return cleanAstroText(raw);
   },
 
@@ -741,18 +774,46 @@ Integrer planettolkninger, aspekter og hussymbolikk. Ingen Markdown.`;
     const p1 = chart1.positions.map(p => `${p.name}: ${p.sign}, Hus ${p.house}`).join(' | ');
     const p2 = chart2.positions.map(p => `${p.name}: ${p.sign}, Hus ${p.house}`).join(' | ');
 
-    const userMessage = `Analyser synastri på ${targetLang} mellom:
-${chart1.clientName}: ${p1} | Asc: ${chart1.ascendant}
-${chart2.clientName}: ${p2} | Asc: ${chart2.ascendant}
+    // Cross-aspects: check key inter-chart aspects
+    const crossAspects: string[] = [];
+    const keyBodies = ['Solen', 'Månen', 'Venus', 'Mars', 'Jupiter', 'Saturn'];
+    for (const p1planet of chart1.positions.filter(p => keyBodies.includes(p.name))) {
+      for (const p2planet of chart2.positions.filter(p => keyBodies.includes(p.name))) {
+        const diff = Math.abs(p1planet.totalDegrees - p2planet.totalDegrees);
+        const angle = diff > 180 ? 360 - diff : diff;
+        for (const { name, angle: aAngle, orb } of [
+          { name: 'konjunksjon', angle: 0, orb: 8 },
+          { name: 'trigon', angle: 120, orb: 8 },
+          { name: 'opposisjon', angle: 180, orb: 8 },
+          { name: 'kvadrat', angle: 90, orb: 7 },
+        ]) {
+          if (Math.abs(angle - aAngle) <= orb) {
+            crossAspects.push(`${chart1.clientName} ${p1planet.name} ${name} ${chart2.clientName} ${p2planet.name}`);
+            break;
+          }
+        }
+      }
+    }
+
+    const userMessage = `Analyser synastri på ${targetLang} mellom ${chart1.clientName} og ${chart2.clientName}.
+
+${chart1.clientName}:
+${p1} | Asc: ${chart1.ascendant} | Chartruler: ${chart1.chartRuler} i ${chart1.chartRulerSign}
+
+${chart2.clientName}:
+${p2} | Asc: ${chart2.ascendant} | Chartruler: ${chart2.chartRuler} i ${chart2.chartRulerSign}
+
+VIKTIGE KRYSS-ASPEKTER:
+${crossAspects.slice(0, 12).join('\n') || 'Beregnes dynamisk'}
 
 Returner JSON:
 {
-  "title": "Tittel",
-  "overview": "Overordnet relasjonskjemi (400+ ord)",
-  "strengths": "Styrkepunkter og harmoni (300+ ord)",
-  "challenges": "Utfordringer og vekstpunkter (300+ ord)",
-  "karmaticThemes": "Karmiske temaer og sjelenivå (200+ ord)",
-  "guidance": "Praktisk veiledning (200+ ord)"
+  "title": "Poetisk tittel for deres relasjon",
+  "overview": "Overordnet relasjonskjemi — kjernedynamikk, tiltrekning og samspill (500+ ord)",
+  "strengths": "Styrkepunkter, harmoni og hva som binder dem (400+ ord)",
+  "challenges": "Utfordringer, friksjonspunkter og vekstmuligheter (300+ ord)",
+  "karmaticThemes": "Karmiske temaer, tidligere liv og sjeldne mønstre (300+ ord)",
+  "guidance": "Konkret praktisk veiledning for å styrke relasjonen (200+ ord)"
 }`;
 
     const raw = await askClaude(systemPrompt, userMessage, 'claude-opus-4-6', 8192);
