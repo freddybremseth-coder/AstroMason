@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { MessageCircle, X, Send, Loader2, Sparkles } from './Icons';
 import { LangContext } from '../App';
-import Anthropic from '@anthropic-ai/sdk';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -61,25 +60,31 @@ const AiAssistant: React.FC = () => {
     setLoading(true);
 
     try {
-      const client = new Anthropic({
-        apiKey: localStorage.getItem('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || process.env.API_KEY || '',
-        dangerouslyAllowBrowser: true,
-      });
-
-      // Build message history for context (last 8 messages)
       const history = messages.slice(-8).map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content
       }));
       history.push({ role: 'user', content: userMsg });
 
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: getSystemPrompt(),
-        messages: history,
+      const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
+      const res = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: getSystemPrompt(),
+          messages: history,
+          apiKey,
+        }),
       });
 
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      const response = await res.json();
       const block = response.content[0];
       const text = block.type === 'text' ? block.text : '';
       setMessages(prev => [...prev, { role: 'assistant', content: text }]);

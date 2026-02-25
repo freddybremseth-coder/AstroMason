@@ -1,5 +1,4 @@
 
-import Anthropic from '@anthropic-ai/sdk';
 import {
   CalculatedChart, PlanetPosition, Aspect, AstrologyMode, Language,
   ChartPattern, EssentialDignity, ElementBalance
@@ -132,11 +131,31 @@ const LANGUAGE_NAMES: Record<Language, string> = {
   fr: 'FRENCH', it: 'ITALIAN', ru: 'RUSSIAN', pl: 'POLISH'
 };
 
-// ─── Client ──────────────────────────────────────────────────────────────────
+// ─── Client (proxy) ──────────────────────────────────────────────────────────
 
-const getClient = () => new Anthropic({
-  apiKey: localStorage.getItem('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || process.env.API_KEY || '',
-  dangerouslyAllowBrowser: true,
+interface ClaudeParams {
+  model?: string;
+  max_tokens?: number;
+  system?: string;
+  messages: { role: 'user' | 'assistant'; content: string }[];
+}
+
+const callClaude = async (params: ClaudeParams) => {
+  const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...params, apiKey }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<{ content: { type: string; text: string }[] }>;
+};
+
+const getClient = () => ({
+  messages: { create: callClaude },
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
