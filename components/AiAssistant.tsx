@@ -67,21 +67,25 @@ const AiAssistant: React.FC = () => {
       history.push({ role: 'user', content: userMsg });
 
       const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
-      const res = await fetch('/api/claude', {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 1024,
           system: getSystemPrompt(),
           messages: history,
-          apiKey,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
+        throw new Error(data.error?.message || `HTTP ${res.status}`);
       }
 
       const response = await res.json();
