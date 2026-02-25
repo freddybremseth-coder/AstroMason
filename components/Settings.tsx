@@ -1,6 +1,6 @@
 
 import React, { useState, useContext, useEffect } from 'react';
-import { User, Shield, Save, Key, Moon, Sun, Monitor, Wallet, ChevronRight, Loader2, History, BookOpen, Trash2, X, Printer, Star, Zap, Activity, MessageCircle, Sparkles, CreditCard } from './Icons';
+import { User, Shield, Save, Key, Moon, Sun, Monitor, Wallet, ChevronRight, Loader2, History, BookOpen, Trash2, X, Printer, Star, Zap, Activity, MessageCircle, Sparkles, CreditCard, CheckCircle } from './Icons';
 import { ThemeContext, LangContext } from '../App';
 
 interface SavedReport {

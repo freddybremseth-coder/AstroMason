@@ -142,7 +142,7 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
                 </div>
             </article>
         ) : (
-            <div className="h-full flex flex-col items-center justify-center py-32 opacity-10 space-y-6">
+            <div className="h-full flex flex-col items-center justify-center py-32 opacity-30 space-y-6">
                 <Sparkles size={100} />
                 <p className="font-serif italic text-2xl">Velg en periode og generer din tolkning</p>
             </div>
