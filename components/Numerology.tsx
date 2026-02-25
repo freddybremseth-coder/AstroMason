@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { Fingerprint, RotateCcw, Sparkles, Loader2, BookOpen, Scroll, Star, Shield, Activity, Calendar, Zap, ChevronRight, Info, Award, Wallet } from './Icons';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai/web";
 import { LangContext } from '../App';
 import { UI_TRANSLATIONS } from '../constants';
 import { cleanAstroText } from '../services/astrology';
