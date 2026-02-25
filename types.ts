@@ -1,22 +1,58 @@
+
 import React from 'react';
 
-export type UserRole = 'professional' | 'client';
-export type Language = 'no' | 'en' | 'es';
+export type UserRole = 'client';
+export type Language = 'no' | 'en' | 'es' | 'de' | 'fr' | 'it' | 'ru' | 'pl';
+export type AstrologyMode = 'esoteric' | 'classical' | 'merged' | 'vedic';
+
+export type ChartPatternType = 'Grand Trine' | 'T-Square' | 'Grand Cross' | 'Yod' | 'Stellium' | 'Kite' | 'Mystic Rectangle';
+
+export interface ChartPattern {
+  type: ChartPatternType;
+  planets: string[];
+  element?: string;
+  description: string;
+}
+
+export interface SynastryAspect {
+  planet1: string;
+  planet2: string;
+  person1Name: string;
+  person2Name: string;
+  type: string;
+  orb: number;
+  degree: number;
+  isHarmonious: boolean;
+  symbol?: string;
+}
+
+export interface EssentialDignity {
+  planet: string;
+  sign: string;
+  status: 'Rulership' | 'Exaltation' | 'Detriment' | 'Fall' | 'Peregrine';
+}
+
+export interface ElementBalance {
+  Ild: number;
+  Jord: number;
+  Luft: number;
+  Vann: number;
+}
 
 export enum MethodologyType {
-  WESTERN_CLASSICAL = 'Vestlig Klassisk',
-  HELLENISTIC = 'Hellenistisk',
-  VEDIC = 'Vedisk (Jyotish)',
-  PSYCHOLOGICAL = 'Psykologisk',
-  EVOLUTIONARY = 'Evolusjonær & Karmisk',
-  ESOTERIC = 'Esoterisk',
-  SPECIALIZED = 'Spesialiserte Teknikker'
+  WESTERN_CLASSICAL = 'Western Classical',
+  HELLENISTIC = 'Hellenistic',
+  VEDIC = 'Vedic',
+  PSYCHOLOGICAL = 'Psychological',
+  EVOLUTIONARY = 'Evolutionary',
+  ESOTERIC = 'Esoteric',
+  SPECIALIZED = 'Specialized'
 }
 
 export interface Author {
   id: string;
   name: string;
-  era: 'Modern' | 'Classical' | 'Renaissance' | 'Ancient' | '20th Century';
+  era: string;
   specialty: string;
   description: string;
   keyWorks: string[];
@@ -27,89 +63,23 @@ export interface Resource {
   id: string;
   title: string;
   author: string;
-  type: 'Book' | 'Translation' | 'Academic Paper' | 'Manuscript' | 'Website';
-  description: string;
-  link?: string;
-  isRecommended: boolean;
-}
-
-export interface NavItem {
-  id: string;
-  label: string;
-  icon: React.FC<any>;
-  roles: UserRole[];
-}
-
-export interface PlanetPosition {
-  name: string;
-  sign: string;
-  degree: number;
-  minute: number;
-  house: number;
-  isRetrograde: boolean;
-}
-
-export interface Aspect {
-  planet1: string;
-  planet2: string;
   type: string;
-  orb: string;
-}
-
-export interface Interpretation {
-  planet: string;
-  placement: string;
-  classical: string;
-  esoteric: string;
-}
-
-export interface RulershipDetail {
-  planet: string;
-  housesRuled: number[];
-  strength: number;
-  positives: string[];
-  negatives: string[];
-}
-
-export interface AnalysisReport {
-  elementalBalance: { fire: number; earth: number; air: number; water: number };
-  modalBalance: { cardinal: number; fixed: number; mutable: number };
-  dignities: { planet: string; dignity: string; score: number }[];
-  interpretations: Interpretation[];
-  rulerships?: RulershipDetail[];
-}
-
-export interface CalculatedChart {
-  clientName: string;
-  date: string;
-  time: string;
-  location: string;
-  positions: PlanetPosition[];
-  aspects: Aspect[];
-  ascendant: string;
-  mc: string;
-  report?: AnalysisReport;
-  partnerChart?: CalculatedChart; // Added for Synastry
-}
-
-// Course Types
-export interface QuizOption {
-  id: string;
-  text: string;
-  isCorrect: boolean;
+  description: string;
+  isRecommended?: boolean;
+  link?: string;
 }
 
 export interface QuizQuestion {
   id: string;
   question: string;
-  options: QuizOption[];
+  options: { id: string; text: string; isCorrect: boolean }[];
 }
 
 export interface Lesson {
   id: string;
   title: string;
   duration: string;
-  type: 'video' | 'text' | 'quiz';
+  type: 'text' | 'video' | 'quiz';
   isCompleted: boolean;
   content?: string;
   questions?: QuizQuestion[];
@@ -125,59 +95,74 @@ export interface Course {
   id: string;
   title: string;
   description: string;
-  level: 'Nybegynner' | 'Videregående' | 'Ekspert';
+  level: string;
   duration: string;
   instructor: string;
   thumbnail: string;
-  modules: Module[];
   progress: number;
   isCertified: boolean;
+  modules: Module[];
 }
 
-// Tarot Types
-export interface TarotCard {
+export interface PlanetPosition {
   name: string;
-  desc: string;
-  keywords: string[];
-  element: string;
-  planet: string;
-  img: string;
+  symbol: string;
+  sign: string;
+  degree: number;
+  minute: number;
+  house: number;
+  isRetrograde: boolean;
+  /** Total degrees in 360 circle for calculation */
+  totalDegrees: number;
+  insight?: string;
+  detailedInsight?: {
+    signAnalysis: string;
+    houseAnalysis: string;
+    aspectsAnalysis: string;
+    synthesis: string;
+  };
 }
 
-export interface TarotDeck {
+export interface Aspect {
+  planet1: string;
+  planet2: string;
+  type: string;
+  degree: number;
+  orb: number;
+  meaning?: string;
+}
+
+export interface CalculatedChart {
+  clientName: string;
+  date: string;
+  time: string;
+  location: string;
+  coords?: { lat: number; lng: number };
+  positions: PlanetPosition[];
+  aspects: Aspect[];
+  ascendant: string;
+  ascendantDegree: number;
+  ascendantSign?: string;
+  mc: string;
+  mcDegree?: number;
+  mcSign?: string;
+  houseCusps: number[];
+  quickSummary?: string;
+  // Professional analysis fields
+  patterns?: ChartPattern[];
+  chartRuler?: string;
+  chartRulerSign?: string;
+  chartRulerHouse?: number;
+  dominantElement?: string;
+  dominantModality?: string;
+  elementBalance?: ElementBalance;
+  modalityBalance?: { Kardinal: number; Fast: number; Mutable: number };
+  dignities?: EssentialDignity[];
+  partOfFortune?: { sign: string; degree: number; house: number; totalDegrees: number };
+}
+
+export interface NavItem {
   id: string;
-  name: string;
-  style: string;
-}
-
-export interface TarotSpread {
-  id: string;
-  name: string;
-  count: number;
-  positions: string[];
-}
-
-export interface TarotTheme {
-  id: string;
-  name: string;
+  label: string;
   icon: React.FC<any>;
-}
-
-export interface ReadingStyle {
-  id: string;
-  name: string;
-  icon: React.FC<any>;
-  desc: string;
-}
-
-// Numerology Types
-export interface NumerologyProfile {
-  lifePath: { number: number; master: boolean };
-  destiny: { number: number; master: boolean };
-  soulUrge: { number: number; master: boolean };
-  personality: { number: number; master: boolean };
-  chaldean: { single: number; compound: number };
-  pinnacles: number[];
-  challenges: number[];
-  personalYear: number;
 }

@@ -1,357 +1,448 @@
-import React, { useState, createContext } from 'react';
-import { Sparkles, Sun, BookOpen, Fingerprint, ChevronRight, X, RotateCcw, CheckCircle, ArrowUpRight, Zap, Calendar, Layers, Hourglass, Clock, MapPin, SquareCheck } from './components/icons';
+
+import React, { useState, useEffect, createContext, useRef } from 'react';
+import { Sparkles, Sun, Loader2, X, ChevronRight, Download, Save, Scroll, RefreshCw, Fingerprint, Heart, Zap, Compass, Star, Printer, Lock, Shield, CheckCircle, Info, Users, User, LayoutDashboard, History, UserCircle, Activity, MapPin, Calendar, Globe, Clock as ClockIcon, Settings as SettingsIcon, Menu, Wallet } from './components/Icons';
 import Tarot from './components/Tarot';
 import Numerology from './components/Numerology';
+import ChartWheel from './components/ChartWheel';
+import Dashboard from './components/Dashboard';
+import Sidebar from './components/Sidebar';
+import Profile from './components/Profile';
+import Horoscope from './components/Horoscope';
+import ChineseAstrology from './components/ChineseAstrology';
+import LandingPage from './components/LandingPage';
+import AdminCRM from './components/AdminCRM';
+import Settings from './components/Settings';
+import Tools from './components/Tools';
+import Logo from './components/Logo';
+import SolarReturn from './components/SolarReturn';
+import Progressions from './components/Progressions';
+import TransitCalendar from './components/TransitCalendar';
+import AiAssistant from './components/AiAssistant';
 import { AstrologyService } from './services/astrology';
-import { Language } from './types';
-// --- ChatBot Import ---
-import ChatBot from './components/ChatBot'; 
+import { CalculatedChart, Language, PlanetPosition, AstrologyMode } from './types';
+import { UI_TRANSLATIONS } from './constants';
+import { authService, profileService } from './lib/supabase';
 
-export const ThemeContext = createContext<{
-  theme: 'light' | 'dark';
-  setTheme: (theme: 'light' | 'dark') => void;
-}>({ theme: 'dark', setTheme: () => {} });
-
-export const LangContext = createContext<{
-  lang: Language;
-  setLang: (lang: Language) => void;
-}>({ lang: 'no', setLang: () => {} });
-
-const LifeTimeline = ({ events }: { events: any[] }) => (
-  <div className="relative border-l border-indigo-500/30 ml-3 space-y-8 py-4">
-    {events.map((event, idx) => (
-      <div key={idx} className="relative pl-8 group">
-        <div className={`absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full border border-indigo-900 ${event.major ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)] scale-125' : 'bg-indigo-600'} transition-all group-hover:scale-150`}></div>
-        <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 mb-1">
-             <span className={`text-xs font-bold tracking-widest ${event.major ? 'text-amber-300' : 'text-indigo-300'}`}>{event.year}</span>
-             <span className="text-xs uppercase tracking-widest text-slate-500 hidden sm:inline">|</span>
-             <h4 className={`font-serif text-lg ${event.major ? 'text-white' : 'text-slate-300'}`}>{event.title}</h4>
-        </div>
-        <p className="text-sm text-slate-400 leading-relaxed max-w-lg">{event.desc}</p>
-      </div>
-    ))}
-  </div>
-);
+export const LangContext = createContext<{lang: Language, setLang: (l: Language) => void}>({} as any);
+export const ThemeContext = createContext<{theme: 'light' | 'dark', setTheme: (t: 'light' | 'dark') => void}>({} as any);
 
 export default function AstroMasonApp() {
-  const [activeTab, setActiveTab] = useState('home'); 
+  const [lang, setLang] = useState<Language>('no');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [astrologySubTab, setAstrologySubTab] = useState<'chart' | 'horoscope' | 'livsbok' | 'solretur' | 'progresjon' | 'kalender'>('chart');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  const [natalChart, setNatalChart] = useState<CalculatedChart | null>(null);
+  const [activeChart, setActiveChart] = useState<CalculatedChart | null>(null);
+  
   const [showReport, setShowReport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [loadingText, setLoadingText] = useState('Konsulterer arkivene...');
   const [reportData, setReportData] = useState<any>(null);
-  const [reportDepth, setReportDepth] = useState('medium'); 
-  
-  // Input States
-  const [name, setName] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [isTimeUnknown, setIsTimeUnknown] = useState(false);
-  const [location, setLocation] = useState('');
-  
+  const [astrologyMode, setAstrologyMode] = useState<AstrologyMode>('esoteric');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [lang, setLang] = useState<Language>('no');
+  const [selectedPlanet, setSelectedPlanet] = useState<PlanetPosition | null>(null);
+  
+  const [userCredits, setUserCredits] = useState<number>(0);
+  const [subscription, setSubscription] = useState<string>('None');
+  const [userId, setUserId] = useState<string>('');
 
-  const generateReading = async (type: string) => {
-    setIsLoading(true);
-    if (type === 'astro') {
-        const timeToUse = isTimeUnknown ? '12:00' : time;
-        
-        const dummyChart = await AstrologyService.calculateChart({
-            name: name || 'Gjest', 
-            date: date || '1990-01-01', 
-            time: timeToUse || '12:00', 
-            location: location || 'Oslo', 
-            houseSystem: 'Whole Sign'
-        });
-        
-        const data = await AstrologyService.generateAIReport(dummyChart, 'natal', { 
-            date: new Date().toISOString(), 
-            location: location || 'Oslo',
-            depth: reportDepth 
-        });
-        setReportData(data);
-        setIsLoading(false);
-        setShowReport(true);
+  const t = UI_TRANSLATIONS[lang];
+
+  const refreshNatalData = async (silent = false) => {
+    const savedName = localStorage.getItem('soul_name');
+    const savedDate = localStorage.getItem('soul_date');
+    
+    if (!savedName || !savedDate) {
+        setIsInitialLoading(false);
+        setIsVerifying(false);
+        return;
+    }
+
+    if (!silent) setIsVerifying(true);
+    try {
+      const birthData = {
+          name: savedName,
+          date: savedDate,
+          time: localStorage.getItem('soul_time') || '12:00',
+          location: localStorage.getItem('soul_location') || 'Oslo, Norge',
+          houseSystem: localStorage.getItem('soul_houses') || 'Placidus'
+      };
+      const chart = await AstrologyService.calculateChart(birthData, astrologyMode);
+      setNatalChart(chart);
+      setActiveChart(chart);
+      // Store key chart data for AI chat context
+      const sun = chart.positions.find(p => p.name === 'Solen');
+      const moon = chart.positions.find(p => p.name === 'Månen');
+      if (sun) localStorage.setItem('soul_sun', `${sun.sign} ${sun.degree}°, Hus ${sun.house}`);
+      if (moon) localStorage.setItem('soul_moon', `${moon.sign} ${moon.degree}°, Hus ${moon.house}`);
+      localStorage.setItem('soul_asc', chart.ascendant);
+      localStorage.setItem('soul_chart_summary', chart.positions.slice(0, 10).map(p => `${p.name}: ${p.sign} ${p.degree}°`).join(', '));
+    } catch (e) {
+      console.error("Klarte ikke å laste kartdata", e);
+    } finally {
+      setIsInitialLoading(false);
+      setIsVerifying(false);
     }
   };
 
-  const resetApp = () => {
-    setShowReport(false);
-    setActiveTab('home');
-    setReportData(null);
+  useEffect(() => {
+    const updateStats = () => {
+      const creds = parseInt(localStorage.getItem('tarot_credits') || '0');
+      const sub = localStorage.getItem('soul_subscription') || 'None';
+      setUserCredits(creds);
+      setSubscription(sub);
+    };
+
+    const handleNavigate = (e: any) => {
+      if (e.detail) setActiveTab(e.detail);
+    };
+
+    updateStats();
+    window.addEventListener('storage', updateStats);
+    window.addEventListener('navigate', handleNavigate as any);
+    
+    // Check for existing Supabase session or localStorage fallback
+    authService.getSession().then(({ user }) => {
+      if (user) {
+        const uid = user.id || user.email || '';
+        setUserId(uid);
+        setIsAdmin(false);
+        setIsAuthenticated(true);
+        profileService.get(uid).then(({ data }) => {
+          if (data?.is_admin) setIsAdmin(true);
+          if (data?.subscription) setSubscription(data.subscription);
+          if (data?.credits !== undefined) setUserCredits(data.credits);
+        });
+        refreshNatalData(true);
+      } else {
+        setIsInitialLoading(false);
+      }
+    });
+
+    const interval = setInterval(updateStats, 2000);
+    return () => {
+      window.removeEventListener('storage', updateStats);
+      window.removeEventListener('navigate', handleNavigate as any);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleLogin = (userData: { email: string; isAdmin: boolean; userId: string }) => {
+    setIsAuthenticated(true);
+    setIsAdmin(userData.isAdmin);
+    setUserId(userData.userId);
+    const emailLower = userData.email.toLowerCase();
+    localStorage.setItem('soul_email', emailLower);
+    // Ensure admin always has credits
+    if (emailLower === 'freddy.bremseth@gmail.com') {
+      const saved = localStorage.getItem('tarot_credits');
+      if (!saved || parseInt(saved) < 1) {
+        localStorage.setItem('tarot_credits', '200000');
+        window.dispatchEvent(new Event('storage'));
+      }
+    }
+
+    const hasName = localStorage.getItem('soul_name');
+    const hasDate = localStorage.getItem('soul_date');
+    const isProfileComplete = hasName && hasDate;
+
+    refreshNatalData(true);
+
+    if (userData.isAdmin) {
+      setActiveTab('crm');
+    } else if (!isProfileComplete) {
+      setActiveTab('profile');
+    } else {
+      setActiveTab('dashboard');
+    }
   };
 
-  const Navbar = () => (
-    <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-auto h-16 bg-[#0a0a16]/90 backdrop-blur-xl border-t md:border-b border-indigo-500/10 z-50 flex justify-around md:justify-center md:gap-16 items-center px-6 shadow-2xl">
-      <button onClick={() => setActiveTab('astro')} className={`flex flex-col md:flex-row items-center gap-2 ${activeTab === 'astro' ? 'text-amber-200' : 'text-slate-500 hover:text-slate-300'} transition-colors`}>
-        <Sun size={20} />
-        <span className="text-[10px] md:text-xs uppercase tracking-[0.2em] font-medium">Astro</span>
-      </button>
-      <button onClick={() => setActiveTab('timeline')} className={`flex flex-col md:flex-row items-center gap-2 ${activeTab === 'timeline' ? 'text-amber-200' : 'text-slate-500 hover:text-slate-300'} transition-colors`}>
-        <Hourglass size={20} />
-        <span className="text-[10px] md:text-xs uppercase tracking-[0.2em] font-medium">Tidslinje</span>
-      </button>
-      <button onClick={() => setActiveTab('home')} className={`relative -top-6 md:top-0 p-4 rounded-full bg-gradient-to-tr from-indigo-600 via-purple-600 to-amber-600 shadow-[0_0_20px_rgba(99,102,241,0.4)] border border-indigo-300/20 text-white transform transition-transform hover:scale-110 active:scale-95`}>
-        <Sparkles size={24} />
-      </button>
-      <button onClick={() => setActiveTab('tarot')} className={`flex flex-col md:flex-row items-center gap-2 ${activeTab === 'tarot' ? 'text-amber-200' : 'text-slate-500 hover:text-slate-300'} transition-colors`}>
-        <BookOpen size={20} />
-        <span className="text-[10px] md:text-xs uppercase tracking-[0.2em] font-medium">Tarot</span>
-      </button>
-      <button onClick={() => setActiveTab('numerology')} className={`flex flex-col md:flex-row items-center gap-2 ${activeTab === 'numerology' ? 'text-amber-200' : 'text-slate-500 hover:text-slate-300'} transition-colors`}>
-         <Fingerprint size={20} />
-         <span className="text-[10px] md:text-xs uppercase tracking-[0.2em] font-medium">Tall</span>
-      </button>
-    </nav>
-  );
+  useEffect(() => { 
+    if (isAuthenticated) {
+        refreshNatalData(true); 
+    }
+  }, [astrologyMode, isAuthenticated]);
 
-  const ReportView = () => {
-    if (!reportData) return null;
-    return (
-      <div className="min-h-screen bg-[#050511] text-slate-100 p-6 pt-24 pb-24 font-sans animate-fade-in relative z-20">
-        <div className="max-w-3xl mx-auto space-y-12">
-          <button onClick={resetApp} className="fixed top-6 right-6 p-2 rounded-full bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors z-50">
-            <X size={20} />
-          </button>
-          <div className="text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-900/10 text-green-300 text-[10px] tracking-[0.2em] uppercase">
-              <CheckCircle size={12} />
-              <span>{reportDepth === 'long' ? 'Livsbok Generert' : 'Analyse Fullført'}</span>
-            </div>
-            <h1 className="text-3xl md:text-5xl font-serif text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-indigo-100 to-purple-200 leading-tight">
-              {reportData.title}
-            </h1>
-          </div>
-          <div className="relative p-8 rounded-2xl bg-[#0f0f25] border border-indigo-500/20 backdrop-blur-sm overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
-            <h2 className="text-amber-200 font-serif text-lg mb-4 flex items-center gap-2">
-              <Sparkles size={16} /> Kjernen
-            </h2>
-            <p className="text-lg leading-relaxed text-slate-300 italic">"{reportData.essence}"</p>
-          </div>
-          {reportData.timeline && reportData.timeline.length > 0 ? (
-              <div className="space-y-12 animate-fade-in">
-                  <div className="bg-indigo-950/20 rounded-xl p-6 border border-white/5">
-                      <h3 className="text-xl font-serif text-indigo-200 mb-6 flex items-center gap-2">
-                          <Hourglass size={20} /> Din Kosmiske Tidslinje
-                      </h3>
-                      <LifeTimeline events={reportData.timeline} />
-                  </div>
-                  <div className="space-y-8">
-                    {reportData.chapters.map((chapter: any, idx: number) => (
-                        <div key={idx} className="prose prose-invert max-w-none">
-                            <h3 className="text-2xl font-serif text-amber-100 border-b border-white/10 pb-2 mb-4">{chapter.title}</h3>
-                            <div className="text-slate-300 leading-8 text-lg whitespace-pre-wrap">{chapter.content}</div>
-                        </div>
-                    ))}
-                  </div>
-              </div>
-          ) : (
-              <>
-                <div className="space-y-6">
-                    {reportData.dignities.map((d: any, i: number) => (
-                    <div key={i} className={`flex gap-4 p-4 rounded-lg border backdrop-blur-sm ${d.type === 'conflict' ? 'bg-red-950/10 border-red-500/20' : 'bg-emerald-950/10 border-emerald-500/20'}`}>
-                        <div className="mt-1 shrink-0">
-                            {d.type === 'conflict' ? <X size={16} className="text-red-400" /> : <RotateCcw size={16} className="text-emerald-400" />}
-                        </div>
-                        <p className="text-sm text-slate-300 leading-relaxed">{d.text}</p>
-                    </div>
-                    ))}
-                </div>
-                <div className="prose prose-invert prose-p:text-slate-300 prose-headings:font-serif prose-headings:text-indigo-200 max-w-none">
-                    <h3 className="text-xl font-serif flex items-center gap-2"><ArrowUpRight size={20} className="text-indigo-400" /> Reisen & Historien</h3>
-                    <div className="text-base leading-7 opacity-90 whitespace-pre-wrap">{reportData.narrative}</div>
-                </div>
-              </>
-          )}
-          <div className="bg-gradient-to-br from-[#13132b] to-[#0a0a16] p-8 rounded-2xl border border-amber-500/10 text-center space-y-6 shadow-2xl relative overflow-hidden mt-8">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl"></div>
-            <h3 className="text-amber-400 text-[10px] uppercase tracking-[0.2em] font-bold">AstroMason Råd</h3>
-            <p className="text-xl text-white font-serif">{reportData.advice}</p>
-            <div className="pt-6 border-t border-white/5">
-              <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mb-2">Ditt Mantra</p>
-              <p className="text-lg italic text-indigo-300 font-serif">"{reportData.mantra}"</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  const generateReport = async () => {
+    const sub = localStorage.getItem('soul_subscription');
+    const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
+    const cost = 5;
+
+    if (sub !== 'Master' && credits < cost) {
+        setActiveTab('settings');
+        return;
+    }
+
+    if (!activeChart) {
+      await refreshNatalData();
+    }
+    
+    setIsLoading(true);
+    setLoadingText('AstroMason dechiffrerer din sjel...');
+    try {
+      const data = await AstrologyService.generateAIReport(
+        activeChart || natalChart!,
+        'natal',
+        astrologyMode,
+        lang,
+        natalChart || undefined
+      );
+      
+      if (sub !== 'Master') {
+        const newCredits = credits - cost;
+        localStorage.setItem('tarot_credits', newCredits.toString());
+        window.dispatchEvent(new Event('storage'));
+      }
+      
+      setReportData(data);
+      setShowReport(true);
+    } catch (e) {
+      console.error(e);
+      alert("Kunne ikke koble til de dype arkivene akkurat nå.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const LoadingScreen = () => (
-    <div className="fixed inset-0 z-[60] bg-[#050511] flex flex-col items-center justify-center space-y-8 animate-fade-in">
-      <div className="relative">
-        <div className="w-24 h-24 border border-indigo-500/10 rounded-full"></div>
-        <div className="absolute inset-0 w-24 h-24 border-t-2 border-indigo-400 rounded-full animate-spin"></div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Hourglass className="text-amber-200 animate-pulse" size={24} />
-        </div>
-      </div>
-      <div className="text-center space-y-2">
-        <p className="text-indigo-100 font-serif text-xl animate-pulse">
-            {reportDepth === 'long' ? "Skriver livets bok..." : "Konsulterer stjernene..."}
-        </p>
-        <p className="text-slate-500 text-xs uppercase tracking-[0.2em]">
-            {reportDepth === 'long' ? "Dette kan ta 10-20 sekunder for full dybde..." : "Analyserer aspekter"}
-        </p>
-      </div>
-    </div>
+  if (!isAuthenticated) return (
+    <LangContext.Provider value={{ lang, setLang }}>
+        <LandingPage onLogin={handleLogin} />
+    </LangContext.Provider>
   );
-
-  if (isLoading) return <LoadingScreen />;
-  if (showReport) return <ReportView />;
 
   return (
+    <LangContext.Provider value={{ lang, setLang }}>
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      <LangContext.Provider value={{ lang, setLang }}>
-        <div className="min-h-screen bg-[#050511] text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
-          <style>{`
-            @keyframes flip-in { 0% { transform: rotateY(90deg); opacity: 0; } 100% { transform: rotateY(0deg); opacity: 1; } }
-            .animate-flip-in { animation: flip-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-            @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-            .animate-fade-in { animation: fade-in 0.8s ease-out forwards; }
-          `}</style>
-          
-          <div className="fixed inset-0 pointer-events-none z-0">
-            <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-indigo-950/20 rounded-full blur-[120px]"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-950/20 rounded-full blur-[120px]"></div>
-            <div className="absolute top-[30%] left-[50%] transform -translate-x-1/2 w-[30%] h-[30%] bg-amber-900/10 rounded-full blur-[100px]"></div>
+      <div className={`min-h-screen flex flex-col lg:flex-row ${theme === 'dark' ? 'bg-[#050511] text-white' : 'bg-slate-50 text-slate-900'} selection:bg-indigo-500/30 font-sans`}>
+        
+        <header className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-[#0a0a16]/90 backdrop-blur-lg border-b border-white/5 z-40 flex items-center justify-between px-6 py-2">
+          <div className="flex-1"></div>
+          <div className="flex-1 flex justify-center">
+             <Logo size={40} showText={true} />
+          </div>
+          <div className="flex-1 flex justify-end">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 text-slate-400 hover:text-white"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+        </header>
+
+        <Sidebar 
+          currentView={activeTab} 
+          setView={(v) => { 
+            setShowReport(false); 
+            setSelectedPlanet(null); 
+            setActiveTab(v); 
+          }} 
+          isMobileOpen={isMobileMenuOpen} 
+          setIsMobileOpen={setIsMobileMenuOpen} 
+          onLogout={async () => {
+            await authService.signOut();
+            localStorage.clear();
+            setIsAuthenticated(false);
+            setIsAdmin(false);
+            setUserId('');
+            setNatalChart(null);
+            setActiveChart(null);
+          }}
+          isAdmin={isAdmin}
+        />
+
+        <main className="flex-1 overflow-y-auto p-6 md:p-12 mt-20 lg:mt-0">
+          <div className="max-w-7xl mx-auto mb-12 no-print flex justify-end">
+              <div onClick={() => setActiveTab('settings')} className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-2xl cursor-pointer hover:border-amber-500/30 transition-all group">
+                  <div className="text-right">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Status</p>
+                      <p className="text-sm font-serif text-amber-500">
+                        {subscription === 'Master' ? 'Master-medlem' : `${userCredits} Kreditter`}
+                      </p>
+                  </div>
+                  <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:scale-110 transition-transform">
+                      <Wallet size={18} />
+                  </div>
+              </div>
           </div>
 
-          <Navbar />
+          {isInitialLoading || isVerifying ? (
+            <div className="flex flex-col items-center justify-center h-[60vh] space-y-8 animate-fade-in">
+               <div className="relative">
+                  <Loader2 className="animate-spin text-amber-500" size={80} />
+                  <Star className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-amber-200/40 animate-pulse" size={32} />
+               </div>
+               <div className="text-center space-y-2">
+                  <p className="font-serif text-2xl text-amber-100 italic">Dechiffrerer dine kosmiske koordinater...</p>
+               </div>
+            </div>
+          ) : (
+            <div className="max-w-7xl mx-auto">
+          {activeTab === 'dashboard' && <Dashboard onNavigate={(view) => {
+            if (view === 'horoscope') { setActiveTab('astrology'); setAstrologySubTab('horoscope'); }
+            else if (view === 'livsbok') { setActiveTab('astrology'); setAstrologySubTab('livsbok'); }
+            else setActiveTab(view);
+          }} />}
+              {activeTab === 'chinese' && <ChineseAstrology />}
+              {activeTab === 'profile' && <Profile onUpdate={() => { refreshNatalData(true); setActiveTab('dashboard'); }} userId={userId} />}
+              {activeTab === 'tarot' && <Tarot onNavigateToSettings={() => setActiveTab('settings')} />}
+              {activeTab === 'numerology' && <Numerology />}
+              {activeTab === 'crm' && isAdmin && <AdminCRM />}
+              {activeTab === 'settings' && <Settings />}
+              {activeTab === 'tools' && <Tools onNavigateToSettings={() => setActiveTab('settings')} />}
+              
+              {activeTab === 'astrology' && (
+                !natalChart ? (
+                   <div className="max-w-xl mx-auto py-24 text-center space-y-8 animate-fade-in">
+                    <div className="w-24 h-24 bg-amber-500/5 rounded-full flex items-center justify-center mx-auto border border-amber-500/20 text-amber-500">
+                        <Calendar size={48} />
+                    </div>
+                    <div className="space-y-4">
+                        <h2 className="text-3xl font-serif text-white italic">Fødselstid og dato mangler</h2>
+                        <p className="text-slate-400 font-light leading-relaxed">For å se ditt stjernekart og personlige horoskop trenger AstroMason nøyaktig informasjon om din inkarnasjon.</p>
+                        <button onClick={() => setActiveTab('profile')} className="px-10 py-4 bg-amber-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-amber-400 transition-all shadow-xl shadow-amber-500/20">
+                            Oppdater Sjelsprofil Nå
+                        </button>
+                    </div>
+                  </div>
+                ) : (
+                <div className="space-y-12">
+                   <header className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+                      <div className="text-center md:text-left">
+                          <h2 className="text-5xl font-serif font-bold text-white">Astrologi Hub</h2>
+                          <p className="text-slate-500 text-xs uppercase tracking-[0.4em] font-black">Ditt kosmiske kompass</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1 bg-white/5 p-1.5 rounded-2xl border border-white/10 no-print">
+                         {[
+                             { id: 'chart', label: 'Kart', icon: Sun },
+                             { id: 'horoscope', label: 'Horoskop', icon: Calendar },
+                             { id: 'livsbok', label: 'Livsbok', icon: Scroll },
+                             { id: 'solretur', label: 'Solretur', icon: Zap },
+                             { id: 'progresjon', label: 'Progresjon', icon: RefreshCw },
+                             { id: 'kalender', label: 'Kalender', icon: Star },
+                         ].map(tab => (
+                             <button key={tab.id} onClick={() => { setAstrologySubTab(tab.id as any); setShowReport(false); }} className={`px-4 py-3 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${astrologySubTab === tab.id ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>
+                                 <tab.icon size={14} /> {tab.label}
+                             </button>
+                         ))}
+                      </div>
+                   </header>
 
-          <main className="container mx-auto px-6 pt-12 pb-32 relative z-10">
-            
-            {activeTab === 'home' && (
-              <div className="flex flex-col items-center justify-center min-h-[75vh] text-center space-y-10 animate-fade-in">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-b from-indigo-500/10 to-transparent border border-indigo-400/20 flex items-center justify-center mb-4 ring-1 ring-white/5">
-                  <Sparkles className="text-amber-100 w-8 h-8" />
-                </div>
-                <div className="space-y-4">
-                    <h1 className="text-5xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white via-indigo-100 to-indigo-900/50 tracking-tight">AstroMason</h1>
-                    <p className="text-sm md:text-base text-indigo-200/60 uppercase tracking-[0.3em]">Elite Astrologi & Livsdesign</p>
-                </div>
-                <p className="text-lg text-slate-400 max-w-md font-light leading-relaxed">Dyp innsikt i hvem du er, og et kart over hvem du blir.</p>
-                <div className="flex flex-col md:flex-row gap-4 pt-8 w-full md:w-auto">
-                  <button onClick={() => setActiveTab('astro')} className="px-8 py-4 rounded-full bg-white text-slate-900 font-medium hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
-                    <BookOpen size={18} />
-                    <span>Start Livsboken</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {(activeTab === 'astro' || activeTab === 'timeline') && (
-              <div className="max-w-xl mx-auto animate-fade-in">
-                <header className="mb-10 text-center">
-                    <h2 className="text-3xl font-serif text-indigo-100">Din Livsreise</h2>
-                    <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-[0.2em]">Velg dybden på din analyse</p>
-                </header>
-                
-                <div className="bg-[#0f0f25]/80 backdrop-blur-md rounded-2xl p-8 border border-white/5 space-y-8 shadow-2xl relative overflow-hidden">
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {[
-                          { id: 'short', title: 'Essens', pages: 'ca 500 ord', icon: Zap },
-                          { id: 'medium', title: 'Årshoroskop', pages: 'ca 1500 ord', icon: Calendar },
-                          { id: 'long', title: 'Livsboken', pages: '3000+ ord', icon: Layers }
-                      ].map((opt) => (
-                          <button 
-                            key={opt.id}
-                            onClick={() => setReportDepth(opt.id)}
-                            className={`p-4 rounded-xl border text-left transition-all ${reportDepth === opt.id ? 'bg-indigo-600 border-indigo-400 shadow-lg shadow-indigo-900/50' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600'}`}
-                          >
-                              <opt.icon size={20} className={reportDepth === opt.id ? 'text-white' : 'text-slate-400'} />
-                              <div className="mt-3 font-medium text-sm text-white">{opt.title}</div>
-                              <div className={`text-[10px] mt-1 ${reportDepth === opt.id ? 'text-indigo-200' : 'text-slate-500'}`}>{opt.pages}</div>
-                          </button>
-                      ))}
-                   </div>
-
-                   {/* Complete Input Form */}
-                   <div className="space-y-4 pt-4 border-t border-white/5">
-                       <div className="space-y-2">
-                           <label className="block text-[10px] uppercase tracking-[0.2em] text-indigo-300/70">Navn</label>
-                           <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-[#050511] border border-slate-800 rounded-lg p-3 text-white focus:border-indigo-500/50 outline-none" placeholder="Ditt navn" />
-                       </div>
-                       
-                       <div className="flex gap-4">
-                           <div className="flex-1 space-y-2">
-                               <label className="block text-[10px] uppercase tracking-[0.2em] text-indigo-300/70">Fødselsdato</label>
-                               <div className="relative">
-                                   <Calendar className="absolute left-3 top-3 text-slate-500" size={16} />
-                                   <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-[#050511] border border-slate-800 rounded-lg p-3 pl-10 text-white focus:border-indigo-500/50 outline-none" />
-                               </div>
+                   {astrologySubTab === 'chart' && (
+                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-fade-in">
+                        <div className="lg:col-span-7">
+                           <div className="bg-white/5 p-6 md:p-12 rounded-[2.5rem] md:rounded-[4rem] border border-white/10 chart-to-print shadow-2xl">
+                              {activeChart && (
+                                  <ChartWheel positions={activeChart.positions} ascendantDegree={activeChart.ascendantDegree} houses={activeChart.houseCusps} aspects={activeChart.aspects} onPlanetClick={setSelectedPlanet} />
+                              )}
                            </div>
-                           <div className="flex-1 space-y-2">
-                               <div className="flex justify-between items-center">
-                                   <label className="block text-[10px] uppercase tracking-[0.2em] text-indigo-300/70">Tidspunkt</label>
-                                   <label className="flex items-center gap-1 cursor-pointer">
-                                       <div className={`w-3 h-3 border rounded-sm flex items-center justify-center ${isTimeUnknown ? 'bg-indigo-500 border-indigo-500' : 'border-slate-600'}`}>
-                                           {isTimeUnknown && <SquareCheck size={10} className="text-white" />}
-                                       </div>
-                                       <input type="checkbox" checked={isTimeUnknown} onChange={e => setIsTimeUnknown(e.target.checked)} className="hidden" />
-                                       <span className="text-[9px] text-slate-500 uppercase">Vet ikke</span>
-                                   </label>
-                               </div>
-                               <div className="relative">
-                                   <Clock className={`absolute left-3 top-3 ${isTimeUnknown ? 'text-slate-700' : 'text-slate-500'}`} size={16} />
-                                   <input 
-                                     type="time" 
-                                     value={time} 
-                                     onChange={e => setTime(e.target.value)} 
-                                     disabled={isTimeUnknown}
-                                     className={`w-full bg-[#050511] border border-slate-800 rounded-lg p-3 pl-10 text-white focus:border-indigo-500/50 outline-none ${isTimeUnknown ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                                   />
-                               </div>
-                           </div>
-                       </div>
+                        </div>
+                        <div className="lg:col-span-5 space-y-6">
+                            <div className="bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem] space-y-4">
+                                <h3 className="font-serif text-2xl text-amber-100 italic">Planetariske Posisjoner</h3>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {activeChart?.positions.map((p, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 group hover:border-amber-500/30 transition-all">
+                                            <span className="flex items-center gap-3">
+                                                <span className="text-xl text-amber-500">{p.symbol}</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-slate-300">{p.name}</span>
+                                            </span>
+                                            <span className="text-xs text-slate-400 font-light">{p.degree}° {p.sign}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                     </div>
+                   )}
 
-                       <div className="space-y-2">
-                           <label className="block text-[10px] uppercase tracking-[0.2em] text-indigo-300/70">Fødested</label>
-                           <div className="relative">
-                               <MapPin className="absolute left-3 top-3 text-slate-500" size={16} />
-                               <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-[#050511] border border-slate-800 rounded-lg p-3 pl-10 text-white focus:border-indigo-500/50 outline-none" placeholder="Oslo, Norge" />
-                           </div>
-                       </div>
-                   </div>
+                   {astrologySubTab === 'horoscope' && <Horoscope natalChart={natalChart} />}
+                   {astrologySubTab === 'solretur' && natalChart && <SolarReturn natalChart={natalChart} />}
+                   {astrologySubTab === 'progresjon' && natalChart && (
+                     <Progressions
+                       natalChart={natalChart}
+                     />
+                   )}
+                   {astrologySubTab === 'kalender' && natalChart && <TransitCalendar natalChart={natalChart} />}
 
-                   <div className="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/20">
-                       <p className="text-xs text-indigo-200 leading-relaxed flex gap-2">
-                           <Sparkles size={14} className="shrink-0 mt-0.5" />
-                           {reportDepth === 'long' 
-                             ? "Inkluderer: Omfattende dybdeanalyse (3000+ ord). Full fødselsanalyse, skyggearbeid, progresjoner og livssykluser." 
-                             : reportDepth === 'medium' 
-                             ? "Inkluderer: Fødselskart og årshoroskop (1500 ord)."
-                             : "En konsis analyse av din sjel og kjerneenergi akkurat nå (500 ord)."}
-                       </p>
-                   </div>
-
-                   <button 
-                    onClick={() => generateReading('astro')}
-                    disabled={!name || !date || (!time && !isTimeUnknown) || !location}
-                    className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-lg uppercase tracking-[0.2em] text-xs font-bold shadow-lg shadow-indigo-900/20 transition-all transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span>Generer {reportDepth === 'long' ? 'Livsboken' : 'Analyse'}</span>
-                    <ChevronRight size={14} />
-                  </button>
+                   {astrologySubTab === 'livsbok' && (
+                     <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
+                        {!showReport ? (
+                            <div className="bg-indigo-900/10 p-12 md:p-24 rounded-[4rem] border border-indigo-500/20 text-center space-y-8 shadow-2xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                                    <Scroll size={300} />
+                                </div>
+                                <div className="space-y-4 max-w-2xl mx-auto relative z-10">
+                                    <h3 className="text-5xl font-serif text-white">Din Sjels Kronike</h3>
+                                    <p className="text-slate-400 text-lg font-light leading-relaxed">
+                                        En dyptgående AI-analyse på 4000+ ord som dechiffrerer din sjel, dine karmiske bånd og ditt fulle potensial i denne inkarnasjonen.
+                                    </p>
+                                </div>
+                                <div className="pt-8 flex flex-col items-center gap-6 relative z-10">
+                                    <button onClick={generateReport} className="px-16 py-6 bg-gradient-to-r from-amber-400 to-amber-600 rounded-[2.5rem] font-black uppercase text-xs text-black shadow-2xl hover:scale-[1.05] transition-all flex items-center justify-center gap-4">
+                                        <Scroll size={22} /> Skriv Min Livsbok Nå
+                                    </button>
+                                    <p className="text-[10px] uppercase font-black tracking-[0.3em] text-indigo-400">Pris: 5 Kreditter • 4000+ Ord</p>
+                                </div>
+                            </div>
+                        ) : reportData && (
+                            <div className="bg-[#0a0a1a] p-6 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden animate-slide-up">
+                                <button onClick={() => setShowReport(false)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
+                                <X size={20} />
+                                </button>
+                                <header className="text-center space-y-4 mb-16">
+                                <h1 className="text-4xl md:text-7xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-500 leading-tight">
+                                    {reportData.title}
+                                </h1>
+                                </header>
+                                <article className="prose prose-invert prose-lg md:prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
+                                <div className="first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left mb-12">
+                                    {reportData.essenceSummary}
+                                </div>
+                                {reportData.planetChapters?.map((chapter: any, i: number) => (
+                                    <div key={i} className="mb-12 border-t border-white/5 pt-12">
+                                    <h3 className="text-3xl font-serif text-amber-100 mb-6 uppercase tracking-widest">{chapter.planet}</h3>
+                                    <div className="text-slate-400 font-light leading-relaxed">{chapter.content}</div>
+                                    </div>
+                                ))}
+                                <div className="mt-12 pt-12 border-t border-white/5 italic text-amber-500/80 text-center text-2xl md:text-4xl font-serif">
+                                    {reportData.mantra}
+                                </div>
+                                </article>
+                            </div>
+                        )}
+                     </div>
+                   )}
                 </div>
-              </div>
-            )}
+                )
+              )}
 
-            {activeTab === 'tarot' && (
-              <Tarot />
-            )}
-
-            {activeTab === 'numerology' && (
-              <Numerology />
-            )}
-
-          </main>
-          
-          {/* ChatBot lagt til nederst i strukturen */}
-          <ChatBot />
-
-        </div>
-      </LangContext.Provider>
+              {isLoading && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center space-y-10">
+                   <div className="relative">
+                      <Loader2 className="animate-spin text-amber-500" size={100} />
+                      <Logo size={40} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20" />
+                   </div>
+                   <div className="space-y-4 max-w-md">
+                      <h2 className="text-4xl font-serif text-white italic">{loadingText}</h2>
+                      <div className="h-[2px] w-48 bg-white/5 mx-auto rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 animate-[loading_2s_ease-in-out_infinite]"></div>
+                      </div>
+                      <p className="text-[10px] uppercase text-slate-500 tracking-[0.4em] font-black">Arkivene dechiffreres...</p>
+                   </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+      <AiAssistant />
     </ThemeContext.Provider>
+    </LangContext.Provider>
   );
 }

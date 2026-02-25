@@ -1,206 +1,251 @@
 
-import React, { useState, useContext } from 'react';
-import { User, Settings as SettingsIcon, Bell, Shield, Save, Download, ExternalLink, Key, Moon, Sun, Monitor } from './icons';
-import { ThemeContext } from '../App';
+import React, { useState, useContext, useEffect } from 'react';
+import { User, Shield, Save, Key, Moon, Sun, Monitor, Wallet, ChevronRight, Loader2, History, BookOpen, Trash2, X, Printer, Star, Zap, Activity, MessageCircle, Sparkles, CreditCard, CheckCircle } from './Icons';
+import { ThemeContext, LangContext } from '../App';
 
-interface SettingsProps {
-  currentPlan: 'professional' | 'client';
-  onPlanChange: (planId: string) => void;
+interface SavedReport {
+  id: string;
+  title: string;
+  date: string;
+  type: string;
+  content: string; 
 }
 
-const Settings: React.FC<SettingsProps> = ({ currentPlan, onPlanChange }) => {
+const Settings: React.FC = () => {
   const { theme, setTheme } = useContext(ThemeContext);
-  const [showApiModal, setShowApiModal] = useState(false);
-  const [apiKeys, setApiKeys] = useState({
-      supabase: localStorage.getItem('supabase_key') || '',
-      openai: localStorage.getItem('openai_key') || '',
-      gemini: localStorage.getItem('gemini_api_key') || ''
+  const { lang } = useContext(LangContext);
+  const userEmail = (localStorage.getItem('soul_email') || '').toLowerCase();
+  const userName = localStorage.getItem('soul_name') || 'Søkende Sjel';
+
+  const [subscription, setSubscription] = useState<'None' | 'Single' | 'Master'>(() => {
+    return (localStorage.getItem('soul_subscription') as any) || 'None';
   });
 
-  const handleSaveKeys = () => {
-      localStorage.setItem('supabase_key', apiKeys.supabase);
-      localStorage.setItem('openai_key', apiKeys.openai);
-      localStorage.setItem('gemini_api_key', apiKeys.gemini);
-      setShowApiModal(false);
-      alert('Nøkler lagret i nettleseren.');
+  const [credits, setCredits] = useState<number>(() => {
+    const saved = localStorage.getItem('tarot_credits');
+    if (saved !== null) return parseInt(saved);
+    return userEmail === 'freddy.bremseth@gmail.com' ? 200000 : 0;
+  });
+
+  const [anthropicKey, setAnthropicKey] = useState(() => localStorage.getItem('ANTHROPIC_API_KEY') || '');
+  const [keySaved, setKeySaved] = useState(false);
+
+  const saveApiKey = () => {
+    if (anthropicKey.trim()) {
+      localStorage.setItem('ANTHROPIC_API_KEY', anthropicKey.trim());
+    } else {
+      localStorage.removeItem('ANTHROPIC_API_KEY');
+    }
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 3000);
   };
 
+  const [isPaying, setIsPaying] = useState(false);
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('astromason_reports');
+    if (saved) {
+      try { setSavedReports(JSON.parse(saved)); } catch (e) { console.error(e); }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('tarot_credits', credits.toString());
+    localStorage.setItem('soul_subscription', subscription);
+    // Dispatch storage event manually for same-tab listening
+    window.dispatchEvent(new Event('storage'));
+  }, [credits, subscription]);
+
+  const buyProduct = async (type: 'credits' | 'master', amount: number) => {
+    setIsPaying(true);
+    // Simulate payment in demo mode
+    setTimeout(() => {
+        if (type === 'master') {
+            setSubscription('Master');
+        } else {
+            setCredits(prev => prev + amount);
+        }
+        setIsPaying(false);
+        alert(type === 'master' ? "Du er nå Master-medlem!" : `${amount} kreditter lagt til din sjel.`);
+    }, 1500);
+  };
+
+  const deleteReport = (id: string) => {
+    if(confirm("Er du sikker på at du vil slette denne innsikten?")) {
+        const updated = savedReports.filter(r => r.id !== id);
+        setSavedReports(updated);
+        localStorage.setItem('astromason_reports', JSON.stringify(updated));
+    }
+  };
+
+  const openReport = (saved: SavedReport) => {
+    try {
+        const parsed = JSON.parse(saved.content);
+        setSelectedReport({ ...parsed, meta: saved });
+    } catch (e) {
+        setSelectedReport({
+            report: { title: saved.title, essenceSummary: saved.content },
+            meta: saved
+        });
+    }
+  };
+
+  if (selectedReport) return (
+    <div className="max-w-4xl mx-auto py-12 animate-fade-in space-y-12 pb-32">
+        <div className="bg-[#0a0a1a] p-12 md:p-20 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
+            <button onClick={() => setSelectedReport(null)} className="absolute top-8 left-8 p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all text-slate-400 no-print">
+                <X size={20} />
+            </button>
+            <article className="prose prose-invert prose-xl max-w-none text-slate-300 leading-[2.2] font-light whitespace-pre-wrap">
+                <h1 className="text-5xl font-serif text-white mb-12">{selectedReport.report?.title}</h1>
+                <div className="first-letter:text-6xl first-letter:font-serif first-letter:text-amber-500 first-letter:mr-3 first-letter:float-left mb-12">
+                    {selectedReport.report?.essenceSummary}
+                </div>
+            </article>
+        </div>
+    </div>
+  );
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12 relative">
-      
-      {/* API Modal */}
-      {showApiModal && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-space-900 border border-gray-200 dark:border-space-700 p-6 rounded-xl w-full max-w-md shadow-2xl">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Konfigurer API-nøkler</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Disse lagres kun lokalt i din nettleser. Du trenger en Gemini-nøkkel for AI-analysene.
-                  </p>
-                  
-                  <div className="space-y-4">
-                      <div>
-                          <label className="block text-xs text-gray-500 uppercase mb-1 font-bold">Google Gemini API Key (Anbefalt)</label>
-                          <input 
-                            type="password" 
-                            value={apiKeys.gemini}
-                            onChange={(e) => setApiKeys({...apiKeys, gemini: e.target.value})}
-                            placeholder="AIzaSy..."
-                            className="w-full bg-gray-50 dark:bg-space-950 border border-gold-500/50 dark:border-gold-500/50 rounded p-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-gold-500 outline-none"
-                          />
-                          <p className="text-[10px] text-gray-400 mt-1">Hent gratis nøkkel på aistudio.google.com</p>
-                      </div>
-                      <div className="opacity-50">
-                          <label className="block text-xs text-gray-500 uppercase mb-1">OpenAI API Key (Valgfritt)</label>
-                          <input 
-                            type="password" 
-                            value={apiKeys.openai}
-                            onChange={(e) => setApiKeys({...apiKeys, openai: e.target.value})}
-                            className="w-full bg-gray-50 dark:bg-space-950 border border-gray-300 dark:border-space-700 rounded p-2 text-gray-900 dark:text-white"
-                          />
-                      </div>
-                      <div className="opacity-50">
-                          <label className="block text-xs text-gray-500 uppercase mb-1">Supabase Anon Key (Database)</label>
-                          <input 
-                            type="password" 
-                            value={apiKeys.supabase}
-                            onChange={(e) => setApiKeys({...apiKeys, supabase: e.target.value})}
-                            className="w-full bg-gray-50 dark:bg-space-950 border border-gray-300 dark:border-space-700 rounded p-2 text-gray-900 dark:text-white"
-                          />
-                      </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 mt-6">
-                      <button onClick={() => setShowApiModal(false)} className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-sm">Avbryt</button>
-                      <button onClick={handleSaveKeys} className="bg-gold-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-gold-700 transition-colors">Lagre & Aktiver</button>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-gray-100">Innstillinger</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Administrer din profil og applikasjonspreferanser.</p>
+    <div className="max-w-7xl mx-auto space-y-12 animate-fade-in pb-32">
+      <header className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-white/5 pb-10">
+        <div className="space-y-2">
+          <h2 className="text-5xl font-serif font-bold text-white">Sjelelig Kontroll</h2>
+          <p className="text-slate-500 text-sm uppercase tracking-widest font-black">Administrer dine kosmiske data og ressurser</p>
         </div>
-      </div>
+      </header>
 
-      {/* Profile Card */}
-      <div className="bg-white dark:bg-space-900 border border-gray-200 dark:border-space-800 rounded-xl p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
-        <div className="relative">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-white dark:text-space-950 text-4xl font-serif font-bold shadow-xl shadow-black/10 dark:shadow-black/30 border-4 border-white dark:border-space-800">
-            AA
-          </div>
-          <div className="absolute bottom-0 right-0 bg-white dark:bg-space-800 rounded-full p-1 border border-gray-200 dark:border-space-700">
-             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          </div>
-        </div>
-        <div className="flex-1 text-center md:text-left space-y-1">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Astrid Astrolog</h3>
-          <p className="text-gold-600 dark:text-gold-500 font-medium">
-             {currentPlan === 'professional' ? 'Profesjonell Lisens' : 'Standard Klient'} • Utløper Des 2025
-          </p>
-          <p className="text-gray-500 text-sm">astrid.astrolog@example.com</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        <div className="space-y-8">
-            {/* Theme / Appearance */}
-            <div className="bg-white dark:bg-space-900 border border-gray-200 dark:border-space-800 rounded-xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-gray-200 dark:border-space-800 bg-gray-50 dark:bg-space-950/50 flex items-center gap-3">
-                    <Monitor className="text-blue-500 dark:text-blue-400" size={20} />
-                    <h3 className="font-bold text-gray-900 dark:text-gray-200">Utseende</h3>
-                </div>
-                <div className="p-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Velg ditt foretrukne utseende for applikasjonen.</p>
-                    <div className="grid grid-cols-2 gap-4">
-                        <button 
-                            onClick={() => setTheme('light')}
-                            className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                                theme === 'light' 
-                                ? 'bg-blue-50 border-blue-500 text-blue-700' 
-                                : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 hover:border-gray-300'
-                            }`}
-                        >
-                            <Sun size={32} className={theme === 'light' ? 'text-blue-500' : 'text-gray-400'} />
-                            <span className="font-medium">Lys Modus</span>
-                        </button>
-                        <button 
-                            onClick={() => setTheme('dark')}
-                            className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                                theme === 'dark' 
-                                ? 'bg-space-800 border-gold-500 text-gold-400' 
-                                : 'bg-gray-50 dark:bg-space-950 border-gray-200 dark:border-space-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-space-800 dark:hover:border-space-600'
-                            }`}
-                        >
-                            <Moon size={32} className={theme === 'dark' ? 'text-gold-500' : 'text-gray-400'} />
-                            <span className="font-medium">Mørk Modus</span>
-                        </button>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <div className="lg:col-span-4 space-y-8">
+            <section className="bg-[#0f0f25] border border-white/5 p-10 rounded-[3.5rem] shadow-2xl space-y-8">
+                <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-serif font-bold shadow-xl">
+                        {userName.charAt(0)}
                     </div>
-                </div>
-            </div>
-
-            {/* Astrological Preferences */}
-            <div className="bg-white dark:bg-space-900 border border-gray-200 dark:border-space-800 rounded-xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-gray-200 dark:border-space-800 bg-gray-50 dark:bg-space-950/50 flex items-center gap-3">
-                    <SettingsIcon className="text-gold-500" size={20} />
-                    <h3 className="font-bold text-gray-900 dark:text-gray-200">Astrologiske Preferanser</h3>
-                </div>
-                <div className="p-6 space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Standard Hussystem</label>
-                        <select className="w-full bg-gray-50 dark:bg-space-950 border border-gray-300 dark:border-space-800 rounded-lg px-4 py-3 text-gray-900 dark:text-gray-200 focus:outline-none focus:border-gold-500 transition-colors">
-                            <option value="wholesign">Whole Sign (Anbefalt)</option>
-                            <option value="placidus">Placidus</option>
-                            <option value="koch">Koch</option>
-                        </select>
+                        <h3 className="text-xl font-serif text-white">{userName}</h3>
+                        <p className="text-xs text-slate-500 uppercase tracking-widest font-black">{subscription === 'Master' ? 'Master Medlem' : 'Søkende Sjel'}</p>
                     </div>
                 </div>
-            </div>
+                
+                <div className="pt-6 border-t border-white/5 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-amber-500">
+                            <Wallet size={20} />
+                            <span className="text-xs font-black uppercase tracking-widest">Saldo</span>
+                        </div>
+                        <span className="text-2xl font-serif text-amber-100">
+                            {subscription === 'Master' ? 'Ubegrenset' : `${credits} Kreditter`}
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <section className="bg-[#0a0a16] border border-amber-500/20 p-10 rounded-[3.5rem] shadow-2xl space-y-8">
+                <h3 className="font-serif text-2xl text-white">Fyll på Arkivet</h3>
+                <p className="text-slate-400 text-xs font-light">Kjøp kreditter for enkeltoppgaver eller bli Master for full frihet.</p>
+                {isPaying ? (
+                    <div className="py-12 text-center space-y-4">
+                        <Loader2 size={32} className="animate-spin text-amber-500 mx-auto" />
+                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Kobler til portalen...</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        <button onClick={() => buyProduct('master', 1)} className="w-full p-6 rounded-2xl bg-amber-500 text-black border border-amber-400 shadow-xl shadow-amber-500/10 flex items-center justify-between group hover:scale-[1.02] transition-all">
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase tracking-widest">Master-medlemskap</p>
+                                <p className="text-[9px] opacity-70 italic font-bold">Full tilgang i 1 år</p>
+                            </div>
+                            <span className="text-xl font-serif">€49</span>
+                        </button>
+
+                        <div className="h-[1px] bg-white/5 my-4"></div>
+
+                        {[
+                            { id: 'p1', amount: 5, price: '€14', label: 'Enkeltreise', desc: '5 kreditter (1 Livsbok)' },
+                            { id: 'p2', amount: 20, price: '€29', label: 'Vandrer-pakke', desc: '20 kreditter' }
+                        ].map(pkg => (
+                            <button key={pkg.id} onClick={() => buyProduct('credits', pkg.amount)} className="w-full p-4 rounded-2xl border border-white/5 bg-white/5 text-white hover:border-amber-500/30 transition-all flex items-center justify-between group">
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black uppercase tracking-widest">{pkg.label}</p>
+                                    <p className="text-[9px] text-slate-500 italic font-bold">{pkg.desc}</p>
+                                </div>
+                                <span className="text-lg font-serif text-amber-500">{pkg.price}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </section>
         </div>
 
-        {/* Application Settings */}
-        <div className="space-y-8">
-           {/* Security / Account */}
-           <div className="bg-white dark:bg-space-900 border border-gray-200 dark:border-space-800 rounded-xl overflow-hidden shadow-sm">
-             <div className="p-4 border-b border-gray-200 dark:border-space-800 bg-gray-50 dark:bg-space-950/50 flex items-center gap-3">
-               <Shield className="text-green-500 dark:text-green-400" size={20} />
-               <h3 className="font-bold text-gray-900 dark:text-gray-200">Sikkerhet & Data</h3>
-             </div>
-             <div className="p-6 space-y-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">For å aktivere AI-funksjonene (Tarot & Astrologi), må du legge inn en API-nøkkel.</p>
-                <button 
-                    onClick={() => setShowApiModal(true)}
-                    className="w-full text-left flex items-center justify-between p-3 border border-transparent bg-gray-50 dark:bg-space-800 hover:bg-gray-100 dark:hover:bg-space-700 rounded transition-colors group"
-                >
-                   <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">Administrer API-nøkler</span>
-                   <Key className="text-gold-500" size={16} />
-                </button>
-             </div>
-           </div>
+        <div className="lg:col-span-8 space-y-8">
+            <section className="bg-[#0f0f25] border border-indigo-500/20 p-10 rounded-[3.5rem] shadow-2xl space-y-6">
+                <div className="flex items-center gap-4 text-indigo-400 border-b border-white/5 pb-6">
+                    <Key size={28} />
+                    <div>
+                        <h3 className="font-serif text-2xl text-white">Personlige Arkivnøkler</h3>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-1">Disse nøklene brukes for å åpne de dype AI-analysene</p>
+                    </div>
+                </div>
+                <div className="space-y-3">
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Anthropic API-nøkkel</label>
+                    <div className="flex gap-3">
+                        <input
+                            type="password"
+                            value={anthropicKey}
+                            onChange={e => setAnthropicKey(e.target.value)}
+                            placeholder="sk-ant-..."
+                            className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-indigo-500 outline-none transition-all placeholder:opacity-20 font-mono"
+                        />
+                        <button
+                            onClick={saveApiKey}
+                            className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 transition-all ${keySaved ? 'bg-green-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}
+                        >
+                            {keySaved ? <CheckCircle size={16} /> : <Save size={16} />}
+                            {keySaved ? 'Lagret' : 'Lagre'}
+                        </button>
+                    </div>
+                    <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">
+                        Hent nøkkelen fra console.anthropic.com — lagres kun i din nettleser
+                    </p>
+                </div>
+            </section>
 
-           {/* Notifications */}
-           <div className="bg-white dark:bg-space-900 border border-gray-200 dark:border-space-800 rounded-xl overflow-hidden shadow-sm">
-             <div className="p-4 border-b border-gray-200 dark:border-space-800 bg-gray-50 dark:bg-space-950/50 flex items-center gap-3">
-               <Bell className="text-purple-500 dark:text-purple-400" size={20} />
-               <h3 className="font-bold text-gray-900 dark:text-gray-200">Varsler</h3>
-             </div>
-             <div className="p-6 space-y-4">
-               <div className="flex items-center justify-between">
-                 <span className="text-sm text-gray-600 dark:text-gray-300">Daglige transitter</span>
-                 <div className="w-10 h-6 bg-green-500 rounded-full relative cursor-pointer">
-                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                 </div>
-               </div>
-               <div className="flex items-center justify-between">
-                 <span className="text-sm text-gray-600 dark:text-gray-300">Nye kursmoduler</span>
-                 <div className="w-10 h-6 bg-green-500 rounded-full relative cursor-pointer">
-                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                 </div>
-               </div>
-             </div>
-           </div>
+            <section className="bg-white/[0.02] border border-white/5 p-10 rounded-[4rem] shadow-2xl min-h-[400px] flex flex-col">
+                <div className="flex items-center justify-between mb-12 border-b border-white/5 pb-8">
+                    <div className="flex items-center gap-4 text-indigo-400">
+                        <History size={32} />
+                        <h3 className="font-serif text-3xl">Dine Lagrede Innsikter</h3>
+                    </div>
+                </div>
+
+                {savedReports.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center opacity-10 space-y-6 text-center">
+                        <BookOpen size={100} />
+                        <p className="font-serif italic text-2xl">Arkivet er foreløpig tomt</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[650px] pr-4 custom-scrollbar">
+                        {savedReports.map((report) => (
+                            <div key={report.id} className="bg-[#0a0a1a]/80 border border-white/5 p-6 rounded-[2.5rem] group hover:border-amber-500/30 transition-all flex flex-col justify-between">
+                                <div className="space-y-1 mb-6">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] text-indigo-400 font-black uppercase tracking-widest">{report.type}</span>
+                                        <span className="text-[9px] text-slate-600 font-black uppercase">{new Date(report.date).toLocaleDateString()}</span>
+                                    </div>
+                                    <h4 className="text-lg font-serif text-white group-hover:text-amber-100 transition-colors">{report.title}</h4>
+                                </div>
+                                <div className="flex gap-2 border-t border-white/5 pt-4">
+                                    <button onClick={() => openReport(report)} className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">Åpne</button>
+                                    <button onClick={() => deleteReport(report.id)} className="p-3 bg-red-900/10 hover:bg-red-900/20 border border-red-900/20 rounded-xl text-red-500 transition-all"><Trash2 size={16}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
         </div>
       </div>
     </div>

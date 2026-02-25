@@ -1,105 +1,264 @@
-import React, { useState } from 'react';
-import { Fingerprint, RotateCcw } from './icons';
+
+import React, { useState, useEffect, useContext } from 'react';
+import { Fingerprint, RotateCcw, Sparkles, Loader2, BookOpen, Scroll, Star, Shield, Activity, Calendar, Zap, ChevronRight, Info, Award, Wallet } from './Icons';
+import { GoogleGenAI } from "@google/genai";
+import { LangContext } from '../App';
+import { UI_TRANSLATIONS } from '../constants';
+import { cleanAstroText } from '../services/astrology';
+
+interface AdvancedNumerologyResults {
+    lifePath: number;
+    expression: number;
+    soulUrge: number;
+    personality: number;
+    maturity: number;
+    pinnacles: number[];
+    challenges: number[];
+    isKarmic: {
+        lifePath: boolean;
+        expression: boolean;
+        soulUrge: boolean;
+        personality: boolean;
+    };
+}
 
 const Numerology: React.FC = () => {
-  const [birthDate, setBirthDate] = useState("");
-  const [lifePathNum, setLifePathNum] = useState<number | null>(null);
+  const { lang } = useContext(LangContext);
+  const t = UI_TRANSLATIONS[lang];
+  const [birthDate, setBirthDate] = useState(localStorage.getItem('soul_date') || "");
+  const [fullName, setFullName] = useState(localStorage.getItem('soul_name') || "");
+  const [results, setResults] = useState<AdvancedNumerologyResults | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [deepAnalysis, setDeepAnalysis] = useState<string | null>(null);
+  
+  const COST = 3;
 
-  const calculateLifePath = () => {
-    if (!birthDate) return;
-    setIsCalculating(true);
-    
-    // Simulate calculation delay
-    setTimeout(() => {
-        // Real calculation logic
-        const digits = birthDate.replace(/-/g, '').split('').map(Number);
-        let sum = digits.reduce((a, b) => a + b, 0);
-        
-        while (sum > 9 && sum !== 11 && sum !== 22 && sum !== 33) {
-            sum = sum.toString().split('').map(Number).reduce((a, b) => a + b, 0);
-        }
-        
-        setLifePathNum(sum);
-        setIsCalculating(false);
-    }, 1000);
+  useEffect(() => {
+    setDeepAnalysis(null);
+  }, [lang]);
+
+  const reduceNumber = (num: number, masterNumbers = [11, 22, 33]): number => {
+      if (masterNumbers.includes(num)) return num;
+      let s = num;
+      while (s > 9 && !masterNumbers.includes(s)) {
+          s = s.toString().split('').map(Number).reduce((a, b) => a + b, 0);
+      }
+      return s;
   };
 
-  const getNumberMeaning = (num: number) => {
-      const meanings: Record<number, string> = {
-          1: "Lederen. Du er her for å stå på egne ben, være original og ta initiativ.",
-          2: "Diplomaten. Du er her for å skape harmoni, samarbeid og forståelse.",
-          3: "Kunstneren. Du er her for å uttrykke deg kreativt og spre glede.",
-          4: "Byggeren. Du er her for å skape stabilitet, orden og varige strukturer.",
-          5: "Eventyreren. Du er her for å oppleve frihet, forandring og mangfold.",
-          6: "Beskytteren. Du er her for å ta ansvar, vise omsorg og skape skjønnhet.",
-          7: "Sannhetssøkeren. Du er her for å analysere, finne åndelig visdom og forstå dypet.",
-          8: "Visjonæren. Du er her for å mestre den materielle verden og utøve autoritet.",
-          9: "Humanisten. Du er her for å tjene verden med visdom og medfølelse.",
-          11: "Mesterlæreren (Mestertall). Høy intuitiv innsikt og inspirasjon.",
-          22: "Mesterbyggeren (Mestertall). Evnen til å gjøre store drømmer til virkelighet.",
-          33: "Mesterlæreren (Mestertall). Høyeste grad av åndelig tjeneste."
-      };
-      return meanings[num] || "Et tall fylt med potensial.";
+  const isKarmicDebt = (num: number) => [13, 14, 16, 19].includes(num);
+
+  const calculateNumerology = async () => {
+    if (!birthDate || !fullName) return;
+
+    const sub = localStorage.getItem('soul_subscription');
+    const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
+
+    if (sub !== 'Master' && credits < COST) {
+        alert(`Numerologisk dypanalyse krever ${COST} kreditter. Du blir nå ledet til arkivet.`);
+        window.dispatchEvent(new CustomEvent('navigate', { detail: 'settings' }));
+        return;
+    }
+
+    setIsCalculating(true);
+    setDeepAnalysis(null);
+    
+    const [year, month, day] = birthDate.split('-').map(Number);
+    const rDay = reduceNumber(day);
+    const rMonth = reduceNumber(month);
+    const rYear = reduceNumber(year.toString().split('').map(Number).reduce((a, b) => a + b, 0));
+    const lpRaw = rDay + rMonth + rYear;
+    const lp = reduceNumber(lpRaw);
+
+    const pythagoreanMap: Record<string, number> = {
+        a:1, j:1, s:1, b:2, k:2, t:2, c:3, l:3, u:3, d:4, m:4, v:4, e:5, n:5, w:5, f:6, o:6, x:6, g:7, p:7, y:7, h:8, q:8, z:8, i:9, r:9
+    };
+    const vowels = ['a', 'e', 'i', 'o', 'u', 'y'];
+    const chars = fullName.toLowerCase().replace(/[^a-z]/g, '').split('');
+    
+    const expRaw = chars.map(c => pythagoreanMap[c] || 0).reduce((a, b) => a + b, 0);
+    const soulRaw = chars.filter(c => vowels.includes(c)).map(c => pythagoreanMap[c] || 0).reduce((a, b) => a + b, 0);
+    const persRaw = chars.filter(c => !vowels.includes(c)).map(c => pythagoreanMap[c] || 0).reduce((a, b) => a + b, 0);
+
+    const exp = reduceNumber(expRaw);
+    const soul = reduceNumber(soulRaw);
+    const pers = reduceNumber(persRaw);
+    const mat = reduceNumber(lp + exp);
+
+    const p1 = reduceNumber(rMonth + rDay);
+    const p2 = reduceNumber(rDay + rYear);
+    const p3 = reduceNumber(p1 + p2);
+    const p4 = reduceNumber(rMonth + rYear);
+
+    const c1 = Math.abs(rMonth - rDay);
+    const c2 = Math.abs(rDay - rYear);
+    const c3 = Math.abs(c1 - c2);
+    const c4 = Math.abs(rMonth - rYear);
+
+    setResults({
+        lifePath: lp,
+        expression: exp,
+        soulUrge: soul,
+        personality: pers,
+        maturity: mat,
+        pinnacles: [p1, p2, p3, p4],
+        challenges: [c1, c2, c3, c4],
+        isKarmic: {
+            lifePath: isKarmicDebt(lpRaw),
+            expression: isKarmicDebt(expRaw),
+            soulUrge: isKarmicDebt(soulRaw),
+            personality: isKarmicDebt(persRaw)
+        }
+    });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-pro',
+            contents: `Generer "Livsboken" (Grimoire) for ${fullName}. 
+            DATA: Livsvei ${lp}, Uttrykk ${exp}, Soul Urge ${soul}, Personlighet ${pers}, Modenhet ${mat}.
+            Karmiske Gjeldstall funnet: ${isKarmicDebt(lpRaw) ? '13/4' : ''} ${isKarmicDebt(expRaw) ? '14/5' : ''}.
+            SPRÅK: ${lang === 'no' ? 'Norsk' : 'Engelsk'}.
+            FORMAT: IKKE bruk Markdown-tegn som ** eller ##. Bruk store bokstaver for overskrifter.
+            MÅL: 2500+ ord dyp esoterisk kronike.`,
+            config: {
+                systemInstruction: "Du er AstroMason - The Deep Chronicler. Din oppgave er å dechiffrere sjelens tallkode med ekstrem dybde. Aldri oppsummer. Utvid på hver eneste vibrasjon. Bruk store bokstaver for overskrifter og mange linjeskift."
+            }
+        });
+
+        if (sub !== 'Master') {
+            localStorage.setItem('tarot_credits', (credits - COST).toString());
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        setDeepAnalysis(cleanAstroText(response.text));
+    } catch (e) {
+        setDeepAnalysis("De numerologiske arkivene ble avbrutt av en kosmisk storm. Prøv igjen senere.");
+    } finally {
+        setIsCalculating(false);
+    }
+  };
+
+  const renderFormattedAnalysis = (text: string) => {
+    return text.split('\n').map((line, i) => {
+        let content = line.trim();
+        if (!content) return <div key={i} className="h-6" />;
+
+        // Sjekk om linjen er en overskrift (stor skrift, ingen punktum på slutten ofte)
+        if (content === content.toUpperCase() && content.length > 3) {
+            return <h3 key={i} className="text-2xl md:text-3xl font-serif text-indigo-300 mt-12 mb-6 leading-snug tracking-wider">{content}</h3>;
+        }
+
+        return (
+            <p key={i} className="mb-8 text-slate-300 leading-[2.2] font-light text-lg">
+                {content}
+            </p>
+        );
+    });
   };
 
   return (
-    <div className="max-w-md mx-auto animate-fade-in text-center p-6 min-h-[500px] flex flex-col justify-center">
-        <header className="mb-10 space-y-4">
-            <div className="w-20 h-20 mx-auto rounded-full bg-indigo-900/20 border border-indigo-500/30 flex items-center justify-center">
-                <Fingerprint size={40} className="text-indigo-300" />
+    <div className="max-w-6xl mx-auto py-12 px-6 space-y-16 animate-fade-in pb-32">
+        <header className="text-center space-y-6">
+            <div className="relative inline-block group">
+                <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full group-hover:bg-indigo-500/40 transition-all"></div>
+                <div className="relative w-28 h-28 mx-auto rounded-[2.5rem] bg-[#0a0a1a] border border-indigo-500/30 flex items-center justify-center shadow-2xl rotate-45 group-hover:rotate-0 transition-transform duration-700">
+                    <Fingerprint size={56} className="text-indigo-400 -rotate-45 group-hover:rotate-0 transition-transform duration-700" />
+                </div>
             </div>
-            <div>
-                <h2 className="text-3xl font-serif text-indigo-100">Numerologi</h2>
-                <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-[0.2em]">Tallenes hemmelige språk</p>
+            <div className="space-y-2">
+                <h2 className="text-6xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-indigo-400 leading-tight">Sjelens Tallkode</h2>
+                <p className="text-indigo-500 text-xs uppercase tracking-[0.6em] font-black">Esoterisk Numerologi & Tidskart</p>
             </div>
         </header>
 
-        <div className="bg-[#0f0f25]/80 backdrop-blur-md rounded-2xl p-8 border border-white/5 space-y-8 shadow-2xl relative overflow-hidden">
-            {/* Background Glow */}
-            <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-900/20 rounded-full blur-[80px]"></div>
+        <section className="bg-[#0f0f25]/60 backdrop-blur-xl border border-white/5 p-10 rounded-[3rem] shadow-2xl flex flex-col md:flex-row gap-10 items-end no-print">
+            <div className="flex-1 space-y-3">
+                <label className="text-[10px] uppercase font-black text-indigo-400 tracking-widest ml-1 flex items-center gap-2">
+                    <Zap size={12} /> Navn for Vibrasjon
+                </label>
+                <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Fullt fødselsnavn" className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white focus:border-indigo-500 outline-none transition-all placeholder:opacity-20" />
+            </div>
+            <div className="flex-1 space-y-3">
+                <label className="text-[10px] uppercase font-black text-indigo-400 tracking-widest ml-1 flex items-center gap-2">
+                    <Calendar size={12} /> Inkarnasjonstidspunkt
+                </label>
+                <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white focus:border-indigo-500 outline-none transition-all" />
+            </div>
+            <div className="flex flex-col gap-3">
+                <button onClick={calculateNumerology} disabled={isCalculating || !fullName || !birthDate} className="px-12 py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all shadow-xl shadow-indigo-900/40 disabled:opacity-30 flex items-center gap-3">
+                    {isCalculating ? <Loader2 size={18} className="animate-spin" /> : <><Sparkles size={18} /> Kalkuler Tallkode</>}
+                </button>
+                <p className="text-center text-[9px] text-slate-500 uppercase font-black tracking-widest">{COST} Kreditter</p>
+            </div>
+        </section>
 
-            {!lifePathNum ? (
-                <>
-                    <div className="space-y-4 relative z-10">
-                        <label className="block text-[10px] uppercase tracking-[0.2em] text-indigo-300/70">Din Fødselsdato</label>
-                        <input 
-                            type="date" 
-                            onChange={(e) => setBirthDate(e.target.value)}
-                            className="w-full bg-[#050511] border border-slate-800 rounded-lg p-4 text-center text-white focus:border-amber-500/50 focus:outline-none transition-all" 
-                        />
+        {results && (
+            <div className="space-y-16 animate-slide-up">
+                <section className="space-y-12">
+                    <div className="flex items-center gap-4">
+                        <div className="h-[1px] flex-1 bg-white/10"></div>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-400">KJERNEVIBRASJONER</h3>
+                        <div className="h-[1px] flex-1 bg-white/10"></div>
                     </div>
-                    <button 
-                        onClick={calculateLifePath}
-                        disabled={!birthDate || isCalculating}
-                        className="w-full py-4 bg-gradient-to-r from-indigo-900 to-slate-900 border border-indigo-500/30 hover:border-indigo-400 text-white rounded-lg uppercase tracking-[0.2em] text-xs font-bold transition-all relative z-10"
-                    >
-                        {isCalculating ? 'Kalkulerer...' : 'Kalkuler Livsvei'}
-                    </button>
-                </>
-            ) : (
-                <div className="space-y-8 animate-slide-up relative z-10">
-                    <div className="w-32 h-32 mx-auto rounded-full border-2 border-amber-500/30 flex items-center justify-center bg-amber-900/10 relative">
-                        <div className="absolute inset-0 border border-amber-500/10 rounded-full animate-ping opacity-20"></div>
-                        <div className="absolute inset-0 bg-stardust opacity-50 rounded-full"></div>
-                        <span className="text-6xl font-serif text-amber-100 drop-shadow-lg">{lifePathNum}</span>
+                    
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                        {[
+                            { label: 'Livsvei', val: results.lifePath, icon: Activity, karmic: results.isKarmic.lifePath, desc: 'Sjelens retning' },
+                            { label: 'Uttrykk', val: results.expression, icon: Star, karmic: results.isKarmic.expression, desc: 'Naturlige evner' },
+                            { label: 'Soul Urge', val: results.soulUrge, icon: Zap, karmic: results.isKarmic.soulUrge, desc: 'Hjertets lengsel' },
+                            { label: 'Personlighet', val: results.personality, icon: Shield, karmic: results.isKarmic.personality, desc: 'Ytre bilde' }
+                        ].map((item, i) => (
+                            <div key={i} className="bg-[#0f0f25] border border-white/10 p-10 rounded-[3rem] text-center space-y-6 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
+                                {item.karmic && <div className="absolute top-0 right-0 bg-red-600 text-[9px] font-black px-4 py-2 uppercase rounded-bl-xl shadow-lg">Karmisk Gjeld</div>}
+                                <p className="text-[11px] font-black uppercase text-indigo-400 tracking-widest">{item.label}</p>
+                                <p className="text-7xl font-serif text-white group-hover:scale-110 transition-transform">{item.val}</p>
+                                <p className="text-[10px] text-slate-500 italic uppercase tracking-wider">{item.desc}</p>
+                                <div className="p-4 bg-white/5 rounded-full w-fit mx-auto text-indigo-300 opacity-20"><item.icon size={20} /></div>
+                            </div>
+                        ))}
                     </div>
-                    <div>
-                        <h3 className="text-xl font-serif text-indigo-100 mb-2">Livsvei {lifePathNum}</h3>
-                        <p className="text-sm text-slate-300 leading-relaxed font-light">
-                            {getNumberMeaning(lifePathNum)}
-                        </p>
+                </section>
+
+                <section className="pt-10">
+                    <div className="bg-[#0a0a1a] p-12 md:p-24 rounded-[4rem] border border-white/5 shadow-2xl relative min-h-[800px] overflow-hidden">
+                        <div className="absolute top-0 right-0 p-24 opacity-[0.03] pointer-events-none">
+                            <Fingerprint size={450} />
+                        </div>
+
+                        {isCalculating ? (
+                            <div className="flex flex-col items-center justify-center h-full py-40 space-y-10">
+                                <div className="relative">
+                                    <Loader2 className="animate-spin text-indigo-500 opacity-20" size={140} />
+                                    <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-amber-500 animate-pulse" size={56} />
+                                </div>
+                                <div className="text-center space-y-4">
+                                    <p className="text-4xl font-serif text-amber-100 animate-pulse italic">AstroMason konsulterer tallenes grimoire...</p>
+                                    <p className="text-[11px] uppercase text-slate-500 tracking-[0.4em] font-black">Sjelens mønster dechiffreres</p>
+                                </div>
+                            </div>
+                        ) : deepAnalysis ? (
+                            <article className="max-w-5xl mx-auto space-y-16">
+                                <header className="text-center space-y-10 border-b border-white/10 pb-20">
+                                    <h1 className="text-6xl md:text-9xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-white to-indigo-400 leading-tight uppercase tracking-widest">SJELENS KRONIKE</h1>
+                                    <div className="flex items-center justify-center gap-8">
+                                        <div className="h-[1px] w-32 bg-white/10"></div>
+                                        <p className="text-indigo-400 uppercase tracking-[0.5em] text-[11px] font-black">Numerologisk Syntese & Livsbok</p>
+                                        <div className="h-[1px] w-32 bg-white/10"></div>
+                                    </div>
+                                </header>
+
+                                <div className="prose prose-invert prose-2xl max-w-none">
+                                    <div className="first-letter:text-9xl first-letter:font-serif first-letter:text-indigo-500 first-letter:mr-8 first-letter:float-left first-letter:mt-4 italic">
+                                        {renderFormattedAnalysis(deepAnalysis)}
+                                    </div>
+                                </div>
+                            </article>
+                        ) : null}
                     </div>
-                    <button 
-                        onClick={() => setLifePathNum(null)} 
-                        className="text-xs text-indigo-400 hover:text-white flex items-center justify-center gap-2 mx-auto transition-colors"
-                    >
-                        <RotateCcw size={12} />
-                        Beregn på nytt
-                    </button>
-                </div>
-            )}
-        </div>
+                </section>
+            </div>
+        )}
     </div>
   );
 };

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { MethodologyType } from '../types';
 import { METHODOLOGY_DESCRIPTIONS } from '../constants';
-import { Compass, Scroll, Activity, Eye, Globe, Star, Sparkles, ExternalLink, FileText } from './icons';
+import { Compass, Scroll, Activity, Eye, Globe, Star, Sparkles, ExternalLink, FileText } from './Icons';
 
 interface MethodologyProps {
   onNavigate?: (view: string) => void;
