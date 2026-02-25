@@ -16,7 +16,7 @@ const Settings: React.FC = () => {
   const { lang } = useContext(LangContext);
   const userEmail = (localStorage.getItem('soul_email') || '').toLowerCase();
   const userName = localStorage.getItem('soul_name') || 'Søkende Sjel';
-  
+
   const [subscription, setSubscription] = useState<'None' | 'Single' | 'Master'>(() => {
     return (localStorage.getItem('soul_subscription') as any) || 'None';
   });
@@ -26,6 +26,19 @@ const Settings: React.FC = () => {
     if (saved !== null) return parseInt(saved);
     return userEmail === 'freddy.bremseth@gmail.com' ? 200000 : 0;
   });
+
+  const [anthropicKey, setAnthropicKey] = useState(() => localStorage.getItem('ANTHROPIC_API_KEY') || '');
+  const [keySaved, setKeySaved] = useState(false);
+
+  const saveApiKey = () => {
+    if (anthropicKey.trim()) {
+      localStorage.setItem('ANTHROPIC_API_KEY', anthropicKey.trim());
+    } else {
+      localStorage.removeItem('ANTHROPIC_API_KEY');
+    }
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 3000);
+  };
 
   const [isPaying, setIsPaying] = useState(false);
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
@@ -168,7 +181,39 @@ const Settings: React.FC = () => {
         </div>
 
         <div className="lg:col-span-8 space-y-8">
-            <section className="bg-white/[0.02] border border-white/5 p-10 rounded-[4rem] shadow-2xl min-h-[600px] flex flex-col">
+            <section className="bg-[#0f0f25] border border-indigo-500/20 p-10 rounded-[3.5rem] shadow-2xl space-y-6">
+                <div className="flex items-center gap-4 text-indigo-400 border-b border-white/5 pb-6">
+                    <Key size={28} />
+                    <div>
+                        <h3 className="font-serif text-2xl text-white">Personlige Arkivnøkler</h3>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-1">Disse nøklene brukes for å åpne de dype AI-analysene</p>
+                    </div>
+                </div>
+                <div className="space-y-3">
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Anthropic API-nøkkel</label>
+                    <div className="flex gap-3">
+                        <input
+                            type="password"
+                            value={anthropicKey}
+                            onChange={e => setAnthropicKey(e.target.value)}
+                            placeholder="sk-ant-..."
+                            className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-indigo-500 outline-none transition-all placeholder:opacity-20 font-mono"
+                        />
+                        <button
+                            onClick={saveApiKey}
+                            className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 transition-all ${keySaved ? 'bg-green-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}
+                        >
+                            {keySaved ? <CheckCircle size={16} /> : <Save size={16} />}
+                            {keySaved ? 'Lagret' : 'Lagre'}
+                        </button>
+                    </div>
+                    <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">
+                        Hent nøkkelen fra console.anthropic.com — lagres kun i din nettleser
+                    </p>
+                </div>
+            </section>
+
+            <section className="bg-white/[0.02] border border-white/5 p-10 rounded-[4rem] shadow-2xl min-h-[400px] flex flex-col">
                 <div className="flex items-center justify-between mb-12 border-b border-white/5 pb-8">
                     <div className="flex items-center gap-4 text-indigo-400">
                         <History size={32} />

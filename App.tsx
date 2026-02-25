@@ -136,7 +136,16 @@ export default function AstroMasonApp() {
     setIsAuthenticated(true);
     setIsAdmin(userData.isAdmin);
     setUserId(userData.userId);
-    localStorage.setItem('soul_email', userData.email.toLowerCase());
+    const emailLower = userData.email.toLowerCase();
+    localStorage.setItem('soul_email', emailLower);
+    // Ensure admin always has credits
+    if (emailLower === 'freddy.bremseth@gmail.com') {
+      const saved = localStorage.getItem('tarot_credits');
+      if (!saved || parseInt(saved) < 1) {
+        localStorage.setItem('tarot_credits', '200000');
+        window.dispatchEvent(new Event('storage'));
+      }
+    }
 
     const hasName = localStorage.getItem('soul_name');
     const hasDate = localStorage.getItem('soul_date');

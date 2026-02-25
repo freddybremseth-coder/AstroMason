@@ -135,7 +135,7 @@ const LANGUAGE_NAMES: Record<Language, string> = {
 // ─── Client ──────────────────────────────────────────────────────────────────
 
 const getClient = () => new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || process.env.API_KEY || '',
+  apiKey: localStorage.getItem('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || process.env.API_KEY || '',
   dangerouslyAllowBrowser: true,
 });
 

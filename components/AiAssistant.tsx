@@ -62,7 +62,7 @@ const AiAssistant: React.FC = () => {
 
     try {
       const client = new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY || process.env.API_KEY || '',
+        apiKey: localStorage.getItem('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || process.env.API_KEY || '',
         dangerouslyAllowBrowser: true,
       });
 
