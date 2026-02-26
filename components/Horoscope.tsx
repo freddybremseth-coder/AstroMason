@@ -51,8 +51,8 @@ const Horoscope: React.FC<HoroscopeProps> = ({ natalChart }) => {
       }
 
       setReport(text);
-    } catch (e) {
-      setReport("Kunne ikke hente de kosmiske meldingene akkurat nå.");
+    } catch (e: any) {
+      setReport(`Feil: ${e.message || 'Kunne ikke hente de kosmiske meldingene akkurat nå.'}`);
     } finally {
       setIsLoading(false);
     }

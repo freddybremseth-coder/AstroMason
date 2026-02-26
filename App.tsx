@@ -110,6 +110,15 @@ export default function AstroMasonApp() {
     authService.getSession().then(({ user }) => {
       if (user) {
         const uid = user.id || user.email || '';
+        const emailLower = (user.email || '').toLowerCase();
+        // Ensure admin always has credits when session is restored
+        if (emailLower === 'freddy.bremseth@gmail.com') {
+          const saved = localStorage.getItem('tarot_credits');
+          if (!saved || parseInt(saved) < 1) {
+            localStorage.setItem('tarot_credits', '200000');
+            window.dispatchEvent(new Event('storage'));
+          }
+        }
         setUserId(uid);
         setIsAdmin(false);
         setIsAuthenticated(true);

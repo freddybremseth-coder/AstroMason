@@ -138,8 +138,8 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
                 };
                 const text = await AstrologyService.generateTarotReport([dailyCard], SPREADS[0], 'esoteric', 'Generelt', clientData, "Dagens energi", lang);
                 setReport(text);
-            } catch (e) {
-                alert("Oraklet er midlertidig stumt.");
+            } catch (e: any) {
+                alert(e.message || "Oraklet er midlertidig stumt.");
             } finally {
                 setIsGenerating(false);
             }
@@ -161,8 +161,8 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
             };
             const text = await AstrologyService.generateTarotReport(cards, selectedSpread, selectedStyle, 'Generelt', clientData, userContext, lang);
             setReport(text);
-        } catch (e) {
-            alert("De kosmiske strømmene ble avbrutt. Prøv igjen.");
+        } catch (e: any) {
+            alert(e.message || "De kosmiske strømmene ble avbrutt. Prøv igjen.");
         } finally {
             setIsGenerating(false);
         }
