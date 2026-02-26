@@ -1,5 +1,5 @@
 {
-  "name": "tarot-and--astro-mason",
+  "name": "astro-mason",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,11 +10,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
-    "@google/genai": "^1.39.0",
-    "@supabase/supabase-js": "2.39.3",
-    "lucide-react": "0.292.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "@supabase/supabase-js": "^2.84.0",
+    "lucide-react": "^0.554.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

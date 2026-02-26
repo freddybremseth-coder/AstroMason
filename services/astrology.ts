@@ -142,17 +142,23 @@ interface ClaudeParams {
 
 const callClaude = async (params: ClaudeParams) => {
   const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
-  const res = await fetch('/api/claude', {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...params, apiKey }),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify(params),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || `HTTP ${res.status}`);
+    throw new Error(data.error?.message || `HTTP ${res.status}`);
   }
   return res.json() as Promise<{ content: { type: string; text: string }[] }>;
 };
+
 
 const getClient = () => ({
   messages: { create: callClaude },
