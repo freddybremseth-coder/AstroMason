@@ -142,6 +142,9 @@ interface ClaudeParams {
 
 const callClaude = async (params: ClaudeParams) => {
   const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
+  if (!apiKey) {
+    throw new Error('Ingen API-nøkkel funnet. Gå til Innstillinger og lim inn din Anthropic API-nøkkel (sk-ant-...).');
+  }
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
