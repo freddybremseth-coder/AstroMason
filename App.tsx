@@ -366,6 +366,52 @@ export default function AstroMasonApp() {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Annual Profections */}
+                            {natalChart && (() => {
+                              const birthDate = new Date(natalChart.date);
+                              const today = new Date();
+                              let age = today.getFullYear() - birthDate.getFullYear();
+                              const hasBirthdayPassed = today >= new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+                              if (!hasBirthdayPassed) age--;
+                              const profectedHouse = (age % 12) + 1;
+                              const ZODIAC_NO = ['Væren','Tyren','Tvillingene','Krepsen','Løven','Jomfruen','Vekten','Skorpionen','Skytten','Steinbukken','Vannmannen','Fiskene'];
+                              const HOUSE_THEMES: Record<number, string> = {
+                                1:'Identitet & ny start', 2:'Ressurser & verdier', 3:'Kommunikasjon & søsken',
+                                4:'Hjem & røtter', 5:'Kreativitet & kjærlighet', 6:'Helse & daglig arbeid',
+                                7:'Partnerskap & relasjoner', 8:'Transformasjon & delt ressurs', 9:'Visdom & reise',
+                                10:'Karriere & offentlig liv', 11:'Nettverk & drømmer', 12:'Det skjulte & åndelig vekst'
+                              };
+                              const PLANET_RULERS: Record<number, string> = {
+                                1:'♂ Mars', 2:'♀ Venus', 3:'☿ Merkur', 4:'☽ Månen', 5:'☉ Solen',
+                                6:'☿ Merkur', 7:'♀ Venus', 8:'♂ Mars', 9:'♃ Jupiter',
+                                10:'♄ Saturn', 11:'♄ Saturn', 12:'♃ Jupiter'
+                              };
+                              const ascSign = natalChart.ascendant || ZODIAC_NO[0];
+                              const ascIdx = ZODIAC_NO.indexOf(ascSign.replace(' Ascendant','').trim());
+                              const houseSigns = Array.from({length: 12}, (_, i) => ZODIAC_NO[(ascIdx + i + 12) % 12]);
+                              const profectedSign = houseSigns[profectedHouse - 1] || ZODIAC_NO[(profectedHouse - 1) % 12];
+                              return (
+                                <div className="bg-gradient-to-br from-amber-900/20 to-indigo-900/10 border border-amber-500/10 p-8 rounded-[2.5rem] space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">Årsprofesjoner · Alder {age}</p>
+                                    <span className="text-[9px] px-3 py-1 bg-amber-500/10 rounded-full text-amber-400 font-black uppercase">Tradisjonell</span>
+                                  </div>
+                                  <div className="flex items-center gap-6">
+                                    <div className="text-center bg-black/30 rounded-2xl p-5 min-w-[70px]">
+                                      <p className="text-4xl font-serif text-amber-400">{profectedHouse}</p>
+                                      <p className="text-[9px] text-slate-500 uppercase font-black mt-1">Hus</p>
+                                    </div>
+                                    <div className="space-y-2 flex-1">
+                                      <p className="text-sm font-bold text-white">{HOUSE_THEMES[profectedHouse]}</p>
+                                      <p className="text-xs text-slate-400">Årets Herre: <span className="text-amber-300 font-bold">{PLANET_RULERS[profectedHouse]}</span></p>
+                                      <p className="text-[10px] text-slate-500">Profektert tegn: <span className="text-indigo-300">{profectedSign}</span></p>
+                                    </div>
+                                  </div>
+                                  <p className="text-[10px] text-slate-600 italic">Hvert leveår aktiverer et nytt hus. Dette er den kosmiske energien som preger ditt {age + 1}. leveår.</p>
+                                </div>
+                              );
+                            })()}
                         </div>
                      </div>
                    )}
