@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { Fingerprint, RotateCcw, Sparkles, Loader2, BookOpen, Scroll, Star, Shield, Activity, Calendar, Zap, ChevronRight, Info, Award, Wallet } from './Icons';
 import { GoogleGenAI } from "@google/genai/web";
 import { LangContext } from '../App';
@@ -157,6 +157,29 @@ const Numerology: React.FC = () => {
     });
   };
 
+  const personalCycles = useMemo(() => {
+    if (!birthDate) return null;
+    const [, bMonth, bDay] = birthDate.split('-').map(Number);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const rMonth = reduceNumber(bMonth);
+    const rDay = reduceNumber(bDay);
+    const rYear = reduceNumber(String(year).split('').map(Number).reduce((a, b) => a + b, 0));
+    const pYear = reduceNumber(rMonth + rDay + rYear);
+    const pMonth = reduceNumber(pYear + month);
+    const pDay = reduceNumber(pMonth + day);
+    return { pYear, pMonth, pDay };
+  }, [birthDate]);
+
+  const cycleDescriptions: Record<number, string> = {
+    1: 'Nytt begynnelse og initiativ', 2: 'Samarbeid og diplomati', 3: 'Kreativitet og kommunikasjon',
+    4: 'Arbeid og fundament', 5: 'Forandring og frihet', 6: 'Ansvar og hjem',
+    7: 'Introspeksjon og visdom', 8: 'Makt og overflod', 9: 'Avslutning og utgivelse',
+    11: 'Inspirasjon og åndelig innsikt', 22: 'Masterbygger og manifestasjon', 33: 'Kosmisk kjærlighet og helbredelse'
+  };
+
   return (
     <div className="max-w-6xl mx-auto py-12 px-6 space-y-16 animate-fade-in pb-32">
         <header className="text-center space-y-6">
@@ -193,8 +216,54 @@ const Numerology: React.FC = () => {
             </div>
         </section>
 
+        {personalCycles && !results && (
+            <section className="bg-gradient-to-r from-amber-900/20 to-indigo-900/20 border border-amber-500/10 p-10 rounded-[3rem] space-y-8 animate-fade-in">
+                <div className="flex items-center gap-4">
+                    <div className="h-[1px] flex-1 bg-white/10"></div>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-amber-400">NÅVÆRENDE SYKLER</h3>
+                    <div className="h-[1px] flex-1 bg-white/10"></div>
+                </div>
+                <div className="grid grid-cols-3 gap-6">
+                    {[
+                        { label: 'Personlig År', val: personalCycles.pYear, desc: cycleDescriptions[personalCycles.pYear] || '' },
+                        { label: 'Personlig Måned', val: personalCycles.pMonth, desc: cycleDescriptions[personalCycles.pMonth] || '' },
+                        { label: 'Personlig Dag', val: personalCycles.pDay, desc: cycleDescriptions[personalCycles.pDay] || '' },
+                    ].map((item, i) => (
+                        <div key={i} className="bg-black/30 border border-white/5 rounded-[2rem] p-8 text-center space-y-4 hover:border-amber-500/20 transition-all">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">{item.label}</p>
+                            <p className="text-6xl font-serif text-white">{item.val}</p>
+                            <p className="text-xs text-slate-400 italic font-light">{item.desc}</p>
+                        </div>
+                    ))}
+                </div>
+                <p className="text-center text-[10px] text-slate-600 uppercase tracking-widest font-black">Beregnet fra din fødselsdato og dagens dato</p>
+            </section>
+        )}
+
         {results && (
             <div className="space-y-16 animate-slide-up">
+            {personalCycles && (
+                <section className="bg-gradient-to-r from-amber-900/20 to-indigo-900/20 border border-amber-500/10 p-10 rounded-[3rem] space-y-8">
+                    <div className="flex items-center gap-4">
+                        <div className="h-[1px] flex-1 bg-white/10"></div>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-amber-400">NÅVÆRENDE SYKLER</h3>
+                        <div className="h-[1px] flex-1 bg-white/10"></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-6">
+                        {[
+                            { label: 'Personlig År', val: personalCycles.pYear, desc: cycleDescriptions[personalCycles.pYear] || '' },
+                            { label: 'Personlig Måned', val: personalCycles.pMonth, desc: cycleDescriptions[personalCycles.pMonth] || '' },
+                            { label: 'Personlig Dag', val: personalCycles.pDay, desc: cycleDescriptions[personalCycles.pDay] || '' },
+                        ].map((item, i) => (
+                            <div key={i} className="bg-black/30 border border-white/5 rounded-[2rem] p-8 text-center space-y-4 hover:border-amber-500/20 transition-all">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">{item.label}</p>
+                                <p className="text-6xl font-serif text-white">{item.val}</p>
+                                <p className="text-xs text-slate-400 italic font-light">{item.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
                 <section className="space-y-12">
                     <div className="flex items-center gap-4">
                         <div className="h-[1px] flex-1 bg-white/10"></div>

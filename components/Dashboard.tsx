@@ -1,6 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Sun, Moon, Activity, Star, Sparkles, Fingerprint, ChevronRight, Calendar, Zap } from './Icons';
+import { FULL_TAROT_DECK } from '../constants';
 
 interface DashboardProps {
   onNavigate: (view: string) => void;
@@ -22,8 +23,55 @@ interface CosmicSnapshot {
   lunarPhase: string;
 }
 
+interface ActiveTransit {
+  transitPlanet: string;
+  aspect: string;
+  natalPlanet: string;
+  orb: number;
+  color: string;
+}
+
+const reduceNum = (n: number): number => {
+  if ([11, 22, 33].includes(n)) return n;
+  while (n > 9 && ![11, 22, 33].includes(n)) n = String(n).split('').reduce((a, b) => a + +b, 0);
+  return n;
+};
+
+const getDailyCard = () => {
+  const dateStr = new Date().toDateString();
+  const cached = localStorage.getItem('daily_tarot_card');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed.date === dateStr) return parsed.card;
+    } catch {}
+  }
+  // Seed from date string hash for stable daily card
+  const hash = dateStr.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const card = FULL_TAROT_DECK[hash % FULL_TAROT_DECK.length];
+  localStorage.setItem('daily_tarot_card', JSON.stringify({ date: dateStr, card }));
+  return card;
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const today = new Date().toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const [activeTransits, setActiveTransits] = useState<ActiveTransit[]>([]);
+
+  const dailyCard = useMemo(() => getDailyCard(), []);
+
+  const personalYear = useMemo(() => {
+    const bDate = localStorage.getItem('soul_date');
+    if (!bDate) return null;
+    const [, month, day] = bDate.split('-').map(Number);
+    const year = new Date().getFullYear();
+    return reduceNum(reduceNum(month) + reduceNum(day) + reduceNum(String(year).split('').reduce((a, b) => a + +b, 0)));
+  }, []);
+
+  const personalMonth = useMemo(() => {
+    if (!personalYear) return null;
+    return reduceNum(personalYear + (new Date().getMonth() + 1));
+  }, [personalYear]);
 
   const [cosmic, setCosmic] = useState<CosmicSnapshot>({
     sunDeg: '—',
@@ -83,6 +131,63 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         });
       } catch (_) {}
     };
+    // Transit indicator: compare current sky to natal positions
+    const attemptTransits = (tries = 0) => {
+      const astro = (window as any).Astronomy;
+      const chartSummary = localStorage.getItem('soul_chart_summary');
+      if (!astro || !chartSummary) {
+        if (tries < 10) setTimeout(() => attemptTransits(tries + 1), 700);
+        return;
+      }
+      try {
+        const now = new Date();
+        const time = astro.MakeTime(now);
+        const ZODIAC_NO = ['Væren','Tyren','Tvillingene','Krepsen','Løven','Jomfruen','Vekten','Skorpionen','Skytten','Steinbukken','Vannmannen','Fiskene'];
+        const signToDeg = (sign: string, deg: number) => ZODIAC_NO.indexOf(sign) * 30 + deg;
+
+        // Parse natal positions from summary: "Solen: Tvillingene 15°, ..."
+        const natalPositions: {name: string; deg: number}[] = [];
+        chartSummary.split(', ').forEach(part => {
+          const m = part.match(/^(.+?):\s*(.+?)\s+(\d+)°/);
+          if (m) {
+            const [, name, sign, deg] = m;
+            const signIdx = ZODIAC_NO.indexOf(sign.trim());
+            if (signIdx >= 0) natalPositions.push({ name: name.trim(), deg: signIdx * 30 + parseInt(deg) });
+          }
+        });
+
+        // Current transit planets
+        const transitBodies: [string, string][] = [
+          ['Sun','Solen☉'], ['Moon','Månen☽'], ['Mercury','Merkur☿'],
+          ['Venus','Venus♀'], ['Mars','Mars♂'], ['Jupiter','Jupiter♃'], ['Saturn','Saturn♄']
+        ];
+        const aspects = [
+          { angle: 0, name: '☌', color: 'text-amber-400' },
+          { angle: 60, name: '✱', color: 'text-blue-400' },
+          { angle: 90, name: '□', color: 'text-red-400' },
+          { angle: 120, name: '△', color: 'text-green-400' },
+          { angle: 180, name: '☍', color: 'text-red-500' },
+        ];
+
+        const found: ActiveTransit[] = [];
+        for (const [eng, nor] of transitBodies) {
+          const lon = astro.Ecliptic(astro.GeoVector(astro.Body[eng], time, true)).elon;
+          for (const natal of natalPositions) {
+            for (const asp of aspects) {
+              const diff = Math.abs(((lon - natal.deg - asp.angle + 540) % 360) - 180);
+              const orb = Math.min(diff, 180 - diff);
+              if (orb < 3) {
+                found.push({ transitPlanet: nor, aspect: asp.name, natalPlanet: natal.name, orb: Math.round(orb * 10) / 10, color: asp.color });
+              }
+            }
+          }
+        }
+        found.sort((a, b) => a.orb - b.orb);
+        setActiveTransits(found.slice(0, 5));
+      } catch (_) {}
+    };
+    attemptTransits();
+
     attempt();
   }, []);
 
@@ -135,6 +240,64 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
         ))}
       </div>
+
+      {/* Daily Cosmic Briefing */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Daily Tarot Card */}
+        <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/20 border border-indigo-500/20 p-8 rounded-[2.5rem] flex items-center gap-8 group hover:border-indigo-500/40 transition-all cursor-pointer" onClick={() => onNavigate('tarot')}>
+          <div className="relative w-20 h-28 shrink-0 rounded-xl overflow-hidden border border-amber-500/20 shadow-xl">
+            <img src={dailyCard.img} alt={dailyCard.name} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">Dagens Tarot-Kort</p>
+            <p className="text-xl font-serif text-white">{dailyCard.name}</p>
+            {'suit' in dailyCard && dailyCard.suit && (
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">{(dailyCard as any).suit}</p>
+            )}
+            <p className="text-xs text-slate-400 italic">{'keywords' in dailyCard ? (dailyCard.keywords as string[]).join(' · ') : ''}</p>
+          </div>
+        </div>
+
+        {/* Personal Year/Month */}
+        {personalYear && (
+          <div className="bg-gradient-to-br from-amber-900/20 to-black border border-amber-500/10 p-8 rounded-[2.5rem] space-y-4 hover:border-amber-500/30 transition-all group" onClick={() => onNavigate('numerology')} style={{ cursor: 'pointer' }}>
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">Numerologiske Sykler</p>
+            <div className="flex items-end gap-6">
+              <div className="text-center">
+                <p className="text-5xl font-serif text-white group-hover:scale-105 transition-transform inline-block">{personalYear}</p>
+                <p className="text-[9px] text-slate-500 uppercase tracking-widest font-black mt-1">Personlig År</p>
+              </div>
+              <div className="h-12 w-px bg-white/10"></div>
+              <div className="text-center">
+                <p className="text-3xl font-serif text-amber-400">{personalMonth}</p>
+                <p className="text-[9px] text-slate-500 uppercase tracking-widest font-black mt-1">Personlig Måned</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 italic font-light">Numerologisk energi akkurat nå — klikk for dypanalyse</p>
+          </div>
+        )}
+      </div>
+
+      {/* Live Transit Indicator */}
+      {activeTransits.length > 0 && (
+        <div className="bg-[#0f0f25]/60 border border-white/5 p-8 rounded-[2.5rem] space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Aktive Transitter Akkurat Nå</p>
+            <button onClick={() => onNavigate('astrology')} className="text-[9px] text-slate-600 hover:text-amber-500 font-black uppercase tracking-widest transition-colors">Se kart →</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {activeTransits.map((t, i) => (
+              <div key={i} className="bg-black/30 border border-white/5 rounded-2xl p-4 text-center space-y-1 hover:border-indigo-500/20 transition-all">
+                <p className="text-sm font-bold text-white">{t.transitPlanet}</p>
+                <p className={`text-2xl font-serif ${t.color}`}>{t.aspect}</p>
+                <p className="text-xs text-slate-400">{t.natalPlanet}</p>
+                <p className="text-[9px] text-slate-600 font-black">{t.orb}° orb</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Action Hub */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

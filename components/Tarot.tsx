@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Sparkles, Star, FileText, Download, Save, History, X, Wallet, CreditCard, Shield, CheckCircle, Loader2, Scroll, Heart, Briefcase, Zap, Info, Printer, ChevronRight, RotateCcw, Calendar } from './Icons';
 import { CalculatedChart } from '../types';
-import { MAJOR_ARCANA } from '../constants';
+import { MAJOR_ARCANA, FULL_TAROT_DECK } from '../constants';
 import { AstrologyService } from '../services/astrology';
 import { LangContext } from '../App';
 
@@ -51,6 +51,10 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
     const [report, setReport] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    const [history, setHistory] = useState<any[]>(() => {
+        try { return JSON.parse(localStorage.getItem('tarot_history') || '[]'); } catch { return []; }
+    });
 
     useEffect(() => {
         const update = () => {
@@ -85,7 +89,7 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
             window.dispatchEvent(new Event('storage'));
         }
 
-        const shuffled = [...MAJOR_ARCANA].sort(() => 0.5 - Math.random());
+        const shuffled = [...FULL_TAROT_DECK].sort(() => 0.5 - Math.random());
         const draw = shuffled.slice(0, selectedSpread.count).map(c => ({
             card: c,
             isReversed: Math.random() > 0.8
@@ -119,7 +123,7 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
             window.dispatchEvent(new Event('storage'));
         }
 
-        const shuffled = [...MAJOR_ARCANA].sort(() => 0.5 - Math.random());
+        const shuffled = [...FULL_TAROT_DECK].sort(() => 0.5 - Math.random());
         const dailyCard = {
             card: shuffled[0],
             isReversed: Math.random() > 0.8
@@ -178,6 +182,20 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
             content: report
         };
         localStorage.setItem('astromason_reports', JSON.stringify([newEntry, ...saved]));
+
+        // Also save to tarot history journal
+        const histEntry = {
+            id: Date.now().toString(),
+            date: new Date().toISOString(),
+            spread: selectedSpread.name,
+            context: userContext,
+            cards: cards.map((c: any) => ({ name: c.card.name, suit: c.card.suit || 'major', isReversed: c.isReversed })),
+            report: report.slice(0, 300)
+        };
+        const newHistory = [histEntry, ...history].slice(0, 50);
+        setHistory(newHistory);
+        localStorage.setItem('tarot_history', JSON.stringify(newHistory));
+
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 3000);
     };
@@ -191,7 +209,41 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
                     </h2>
                     <p className="text-indigo-300 text-[11px] uppercase tracking-[0.4em] font-black italic">Speilet av din underbevissthet</p>
                 </div>
+                <button
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-slate-400 hover:text-white hover:border-amber-500/30 transition-all text-[11px] font-black uppercase tracking-widest"
+                >
+                    <History size={16} /> Journal ({history.length})
+                </button>
             </header>
+
+            {showHistory && (
+                <section className="bg-[#0f0f25]/60 border border-white/5 p-8 rounded-[3rem] space-y-4 animate-fade-in no-print">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-serif text-white">Tarot-Journal</h3>
+                        <button onClick={() => setShowHistory(false)} className="p-2 text-slate-500 hover:text-white"><X size={16} /></button>
+                    </div>
+                    {history.length === 0 ? (
+                        <p className="text-slate-500 text-sm italic text-center py-8">Ingen legg er registrert ennå.</p>
+                    ) : (
+                        <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                            {history.map((entry: any) => (
+                                <div key={entry.id} className="bg-black/30 border border-white/5 p-5 rounded-2xl flex items-start gap-6">
+                                    <div className="text-center min-w-[60px]">
+                                        <p className="text-[10px] text-slate-500 uppercase font-black">{new Date(entry.date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</p>
+                                        <p className="text-[9px] text-slate-600">{new Date(entry.date).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-bold text-amber-400">{entry.spread}</p>
+                                        <p className="text-[11px] text-slate-400 mt-1">{entry.cards.map((c: any) => `${c.name}${c.isReversed ? ' (R)' : ''}`).join(' · ')}</p>
+                                        {entry.context && <p className="text-[10px] text-slate-600 mt-1 italic">"{entry.context}"</p>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
 
             {!report && cards.length === 0 && (
                 <section className="bg-gradient-to-r from-amber-900/20 to-indigo-900/20 border border-amber-500/10 p-10 rounded-[3.5rem] flex flex-col md:flex-row items-center justify-between gap-10 animate-fade-in no-print">
