@@ -35,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'chinese', label: t.navChineseAstrology, icon: Star },
     { id: 'numerology', label: t.navNumerology, icon: Fingerprint },
     { id: 'tarot', label: t.navTarot, icon: Sparkles },
-    { id: 'tools', label: 'Verktøy', icon: Zap },
+    { id: 'tools', label: t.navTools, icon: Zap },
     { id: 'settings', label: t.navSettings, icon: SettingsIcon },
   ];
 

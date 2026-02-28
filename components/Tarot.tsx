@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Sparkles, Star, FileText, Download, Save, History, X, Wallet, CreditCard, Shield, CheckCircle, Loader2, Scroll, Heart, Briefcase, Zap, Info, Printer, ChevronRight, RotateCcw, Calendar } from './Icons';
 import { CalculatedChart } from '../types';
-import { MAJOR_ARCANA, FULL_TAROT_DECK } from '../constants';
+import { MAJOR_ARCANA, FULL_TAROT_DECK, UI_TRANSLATIONS } from '../constants';
 import { AstrologyService } from '../services/astrology';
 import { LangContext } from '../App';
 
@@ -19,21 +19,24 @@ const CardBack = () => (
   </div>
 );
 
-const SPREADS = [
-    { id: 'one', name: 'Dagens Kort (1 Kort)', count: 1, positions: ['Sjelens Budskap'] },
-    { id: 'three_time', name: 'Tiden (3 Kort)', count: 3, positions: ['Fortid', 'Nåtid', 'Fremtid'] },
-    { id: 'relationship', name: 'Relasjonen (3 Kort)', count: 3, positions: ['Deg', 'Den Andre', 'Dynamikken'] },
-    { id: 'celtic_cross', name: 'Keltisk Kors (10 Kort)', count: 10, positions: ['Kjernen', 'Utfordring', 'Mål', 'Røtter', 'Fortid', 'Fremtid', 'Selvet', 'Omgivelser', 'Frykt', 'Utfall'] }
-];
-
-const STYLES = [
-    { id: 'esoteric', label: 'Esoterisk', desc: 'Sjelens skjulte språk' },
-    { id: 'psychological', label: 'Psykologisk', desc: 'Jungiansk dybde' },
-    { id: 'classical', label: 'Klassisk', desc: 'Tradisjonell innsikt' }
-];
+// Spreads and styles are built dynamically from translations (see getSpreads/getStyles below)
 
 const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
     const { lang } = useContext(LangContext);
+    const tt = (UI_TRANSLATIONS[lang].tarot || UI_TRANSLATIONS['no'].tarot) as any;
+
+    const SPREADS = [
+        { id: 'one', name: tt.spreadOneCard, count: 1, positions: [tt.posSoulMessage] },
+        { id: 'three_time', name: tt.spreadThreeTime, count: 3, positions: [tt.posPast, tt.posPresent, tt.posFuture] },
+        { id: 'relationship', name: tt.spreadRelationship, count: 3, positions: [tt.posYou, tt.posOther, tt.posDynamic] },
+        { id: 'celtic_cross', name: tt.spreadCelticCross, count: 10, positions: [tt.posCore, tt.posChallenge, tt.posGoal, tt.posRoots, tt.posPast, tt.posFuture, tt.posSelf, tt.posEnvironment, tt.posFear, tt.posOutcome] }
+    ];
+
+    const STYLES = [
+        { id: 'esoteric', label: tt.styleEsoteric, desc: tt.styleEsotericDesc },
+        { id: 'psychological', label: tt.stylePsychological, desc: tt.stylePsychologicalDesc },
+        { id: 'classical', label: tt.styleClassical, desc: tt.styleClassicalDesc }
+    ];
     const userEmail = localStorage.getItem('soul_email') || '';
     
     const [credits, setCredits] = useState<number>(() => {
@@ -73,7 +76,7 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
     const handleDraw = () => {
         const sub = localStorage.getItem('soul_subscription');
         if (sub !== 'Master' && credits < 1) {
-            if (confirm("Du har 0 kosmiske kreditter. Vil du fylle på i arkivet?")) {
+            if (confirm(tt.noCreditsMsg)) {
                 onNavigateToSettings?.();
             }
             return;

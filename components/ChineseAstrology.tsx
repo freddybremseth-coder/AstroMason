@@ -47,7 +47,7 @@ const ChineseAstrology: React.FC = () => {
     const credits = parseInt(localStorage.getItem('tarot_credits') || '0');
 
     if (sub !== 'Master' && credits < COST) {
-        alert(`Denne analysen krever ${COST} kreditter. Du blir nå ledet til arkivet for påfyll.`);
+        alert((t.chineseCreditsNeeded || '').replace('{n}', String(COST)));
         window.dispatchEvent(new CustomEvent('navigate', { detail: 'settings' }));
         return;
     }
@@ -69,7 +69,7 @@ const ChineseAstrology: React.FC = () => {
         loadYearlyCycle();
     } catch (e) {
         console.error(e);
-        alert("Forbindelsen til de østlige arkivene er midlertidig brutt.");
+        alert(t.chineseConnectionError || 'Connection error');
     } finally {
         setIsLoading(false);
     }

@@ -24,7 +24,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const { lang, setLang } = useContext(LangContext);
   const [showLangMenu, setShowLangMenu] = useState(false);
 
-  const t = UI_TRANSLATIONS[lang].landing;
+  const tLanding = UI_TRANSLATIONS[lang].landing;
+  const t = tLanding;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,11 +38,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       if (authMode === 'forgot') {
         const { error: resetErr, isDemo } = await authService.resetPassword(cleanEmail);
         if (resetErr) {
-          setError('Kunne ikke sende gjenopprettingslenke. Sjekk e-postadressen.');
+          setError(t.errorResetFailed);
         } else {
           setForgotSent(true);
           if (isDemo) {
-            setError('Demo-modus: ingen e-post sendt. Koble til Supabase for ekte e-post.');
+            setError(t.demoNoEmail);
           }
         }
         setIsProcessing(false);
@@ -53,11 +54,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         if (signUpErr) {
           const msg = (signUpErr as any).message || '';
           if (msg.includes('already registered')) {
-            setError('E-posten er allerede registrert. Logg inn i stedet.');
+            setError(t.errorAlreadyReg);
           } else if (msg.includes('Password')) {
-            setError('Passordet må være minst 6 tegn.');
+            setError(t.errorPasswordShort);
           } else {
-            setError(msg || 'Registrering mislyktes. Prøv igjen.');
+            setError(msg || t.errorRegFailed);
           }
           setIsProcessing(false);
           return;
@@ -78,11 +79,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         if (signInErr) {
           const msg = (signInErr as any).message || '';
           if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
-            setError('Feil e-post eller passord.');
+            setError(t.errorInvalidCred);
           } else if (msg.includes('Email not confirmed')) {
-            setError('Bekreft e-postadressen din først. Sjekk innboksen.');
+            setError(t.errorEmailNotConfirmed);
           } else {
-            setError(msg || 'Innlogging mislyktes. Prøv igjen.');
+            setError(msg || t.errorLoginFailed);
           }
           setIsProcessing(false);
           return;
@@ -96,7 +97,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Noe gikk galt. Prøv igjen.');
+      setError(err.message || t.errorGeneral);
     } finally {
       setIsProcessing(false);
     }
@@ -115,11 +116,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-[#050511] text-gray-100 font-sans selection:bg-gold-500/30 overflow-x-hidden">
 
       <nav className="fixed top-0 w-full z-50 bg-[#050511]/80 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 md:h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Logo size={40} showText={true} />
+            <Logo size={32} showText={true} />
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 md:gap-6">
             <div className="relative">
                 <button onClick={() => setShowLangMenu(!showLangMenu)} className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 hover:text-white transition-all">
                     <Globe size={14} /> {languages.find(l => l.code === lang)?.label}
@@ -140,12 +141,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </nav>
 
-      <header className="relative pt-56 pb-32 overflow-hidden text-center px-6">
+      <header className="relative pt-32 md:pt-56 pb-20 md:pb-32 overflow-hidden text-center px-6">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none opacity-50"></div>
-        <div className="mb-12">
-            <Logo size={140} showText={true} />
+        <div className="mb-8 md:mb-12">
+            <Logo size={100} showText={true} />
         </div>
-        <h1 className="text-7xl md:text-9xl font-serif font-bold text-white mb-8 tracking-tighter leading-none">
+        <h1 className="text-5xl sm:text-7xl md:text-9xl font-serif font-bold text-white mb-6 md:mb-8 tracking-tighter leading-none">
           {t.heroTitle} <br/>
           <span className="text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-amber-600 italic">{t.heroSubtitle}</span>
         </h1>
@@ -158,12 +159,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </header>
 
       {showAuthModal && (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
-          <div className="bg-[#0a0a16] border border-white/10 w-full max-w-md rounded-[3rem] p-12 relative shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-[#0a0a16] border border-white/10 w-full max-w-md rounded-t-[2rem] sm:rounded-[3rem] p-8 sm:p-12 relative shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
             <button onClick={() => setShowAuthModal(false)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
             <div className="text-center mb-10">
               <h2 className="text-3xl font-serif font-bold text-white mb-2">
-                {authMode === 'login' ? t.authTitleLogin : authMode === 'register' ? t.authTitleReg : 'Gjenopprett Tilgang'}
+                {authMode === 'login' ? t.authTitleLogin : authMode === 'register' ? t.authTitleReg : t.forgotTitle}
               </h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">{t.authDesc}</p>
             </div>
@@ -173,8 +174,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto border border-green-500/20">
                   <CircleCheck size={32} className="text-green-500" />
                 </div>
-                <p className="text-slate-300">Gjenopprettingslenke er sendt til <span className="text-amber-400">{email}</span></p>
-                <button onClick={() => { setForgotSent(false); setAuthMode('login'); }} className="text-[10px] font-black uppercase tracking-widest text-amber-500 hover:underline">Tilbake til innlogging</button>
+                <p className="text-slate-300">{t.forgotSentMsg} <span className="text-amber-400">{email}</span></p>
+                <button onClick={() => { setForgotSent(false); setAuthMode('login'); }} className="text-[10px] font-black uppercase tracking-widest text-amber-500 hover:underline">{t.backToLogin}</button>
               </div>
             ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -186,13 +187,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {!isSupabaseConfigured && (
                 <div className="bg-amber-500/5 border border-amber-500/20 text-amber-500/80 p-3 rounded-xl text-[10px] font-bold text-center uppercase tracking-wider">
-                  Demo-modus · Koble til Supabase for ekte auth
+                  {t.demoModeNote}
                 </div>
               )}
 
               <div className="space-y-4">
                 {authMode === 'register' && (
-                    <input type="text" placeholder="Ditt Navn" value={name} onChange={e => setName(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
+                    <input type="text" placeholder={t.namePlaceholder} value={name} onChange={e => setName(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
                 )}
                 <input type="email" placeholder={t.emailLabel} value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-amber-500/50 text-sm" required />
                 {authMode !== 'forgot' && (
@@ -201,7 +202,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
 
               <button type="submit" disabled={isProcessing} className="w-full bg-white text-black font-black uppercase tracking-widest py-5 rounded-2xl text-[10px] hover:bg-amber-400 transition-all shadow-xl flex items-center justify-center gap-3">
-                {isProcessing ? <Loader2 size={18} className="animate-spin" /> : (authMode === 'login' ? t.loginBtn : authMode === 'register' ? t.regBtn : 'Send Gjenoppretting')}
+                {isProcessing ? <Loader2 size={18} className="animate-spin" /> : (authMode === 'login' ? t.loginBtn : authMode === 'register' ? t.regBtn : t.sendRecovery)}
               </button>
             </form>
             )}
@@ -210,7 +211,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div className="mt-8 space-y-4 text-center">
                 {authMode === 'login' && (
                     <button onClick={() => { setAuthMode('forgot'); setError(null); }} className="text-[9px] text-slate-500 hover:text-amber-500 uppercase font-black tracking-widest transition-colors block mx-auto">
-                        Glemt passord?
+                        {t.forgotPassword}
                     </button>
                 )}
                 {authMode !== 'forgot' && (
@@ -223,7 +224,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 )}
                 {authMode === 'forgot' && (
                   <button onClick={() => { setAuthMode('login'); setError(null); }} className="text-[9px] text-slate-500 hover:text-amber-500 uppercase font-black tracking-widest transition-colors block mx-auto">
-                    ← Tilbake til innlogging
+                    ← {t.backToLogin}
                   </button>
                 )}
             </div>
