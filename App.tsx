@@ -31,7 +31,7 @@ export default function AstroMasonApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); 
-  const [astrologySubTab, setAstrologySubTab] = useState<'chart' | 'horoscope' | 'livsbok' | 'solretur' | 'progresjon' | 'kalender'>('chart');
+  const [astrologySubTab, setAstrologySubTab] = useState<'chart' | 'horoscope' | 'livsbok' | 'solretur' | 'progresjon' | 'kalender' | 'synastri'>('chart');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [natalChart, setNatalChart] = useState<CalculatedChart | null>(null);
@@ -361,6 +361,7 @@ export default function AstroMasonApp() {
                              { id: 'solretur', label: t.tabSolarReturn, icon: Zap },
                              { id: 'progresjon', label: t.tabProgression, icon: RefreshCw },
                              { id: 'kalender', label: t.tabCalendar, icon: Star },
+                             { id: 'synastri', label: t.coupleHoroscope, icon: Heart },
                          ].map(tab => (
                              <button key={tab.id} onClick={() => { setAstrologySubTab(tab.id as any); setShowReport(false); }} className={`px-3 py-2.5 rounded-xl flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${astrologySubTab === tab.id ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>
                                  <tab.icon size={12} /> {tab.label}
@@ -449,6 +450,7 @@ export default function AstroMasonApp() {
                      />
                    )}
                    {astrologySubTab === 'kalender' && natalChart && <TransitCalendar natalChart={natalChart} />}
+                   {astrologySubTab === 'synastri' && <Tools onNavigateToSettings={() => setActiveTab('settings')} />}
 
                    {astrologySubTab === 'livsbok' && (
                      <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">

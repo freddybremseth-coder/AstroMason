@@ -336,7 +336,25 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
                                                 <div className={`relative w-full h-full transition-transform duration-700 transform-style-3d ${revealed[i] ? 'rotate-y-180' : 'group-hover:scale-105'}`}>
                                                     <div className="absolute inset-0 backface-hidden"><CardBack /></div>
                                                     <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl overflow-hidden border border-amber-500/20 bg-[#0a0a16] shadow-2xl">
-                                                        <img src={c.card.img} alt={c.card.name} className={`w-full h-full object-cover ${c.isReversed ? 'rotate-180' : ''}`} />
+                                                        <img
+                                                          src={c.card.img}
+                                                          alt={c.card.name}
+                                                          referrerPolicy="no-referrer"
+                                                          onError={(e) => {
+                                                            const img = e.currentTarget;
+                                                            img.style.display = 'none';
+                                                            const fb = img.nextElementSibling as HTMLElement | null;
+                                                            if (fb) fb.style.display = 'flex';
+                                                          }}
+                                                          className={`w-full h-full object-cover ${c.isReversed ? 'rotate-180' : ''}`}
+                                                        />
+                                                        <div style={{ display: 'none' }} className="absolute inset-0 flex-col items-center justify-center bg-gradient-to-br from-indigo-950 via-purple-950 to-black p-3 text-center space-y-2">
+                                                          <span className="text-4xl opacity-50">
+                                                            {(c.card as any).suit === 'staver' ? '🔥' : (c.card as any).suit === 'beger' ? '🌊' : (c.card as any).suit === 'sverd' ? '⚔️' : (c.card as any).suit === 'pentakler' ? '⭐' : '✨'}
+                                                          </span>
+                                                          <p className="text-[10px] font-serif text-amber-200 leading-snug font-bold px-1">{c.card.name}</p>
+                                                          {(c.card as any).keywords && <p className="text-[8px] text-indigo-300 opacity-60">{((c.card as any).keywords as string[]).slice(0,2).join(' · ')}</p>}
+                                                        </div>
                                                         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
                                                             <p className="text-[11px] font-serif text-white leading-tight font-bold">{c.card.name}</p>
                                                             {c.isReversed && <span className="text-[9px] text-red-500 font-black uppercase mt-1 block">Reversert</span>}
