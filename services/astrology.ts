@@ -132,14 +132,7 @@ const LANGUAGE_NAMES: Record<Language, string> = {
 
 // ─── Client (proxy) ──────────────────────────────────────────────────────────
 
-interface ClaudeParams {
-  model?: string;
-  max_tokens?: number;
-  system?: string;
-  messages: { role: 'user' | 'assistant'; content: string }[];
-}
-
-const callClaude = async (params: ClaudeParams) => {
+const callClaude = async (params: any) => {
     const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
     if (!apiKey) {
       throw new Error('Ingen API-nøkkel funnet. Gå til Innstillinger og lim inn din Anthropic API-nøkkel (sk-ant-...).');
@@ -183,19 +176,9 @@ const extractJSON = (text: string): any => {
   throw new Error('Kunne ikke tolke AI-svar som JSON');
 };
 
-const askClaude = async (
-  systemPrompt: string,
-  userMessage: string,
-  model: 'claude-opus-4-6' | 'claude-sonnet-4-6' = 'claude-opus-4-6',
-  maxTokens = 8192
-): Promise<string> => {
+const askClaude = async (params: any): Promise<string> => {
   const client = getClient();
-  const response = await client.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
+  const response = await client.messages.create(params);
   const block = response.content[0];
   return block.type === 'text' ? block.text : '';
 };
@@ -375,13 +358,16 @@ export const AstrologyService = {
   geocode: async (location: string): Promise<{ lat: number; lng: number }> => {
     if (!location) return { lat: 59.91, lng: 10.75 };
     try {
-      const text = await askClaude(
-        'Du er en presis geografisk assistent. Returner KUN gyldig JSON, ingen forklaring.',
-        `Finn de eksakte geografiske koordinatene for stedet: "${location}". Returner JSON: {"lat": number, "lng": number}`,
-        'claude-sonnet-4-6',
-        128
-      );
-      return extractJSON(text);
+        const response = await askClaude({
+            system: 'Du er en presis geografisk assistent. Returner KUN gyldig JSON, ingen forklaring.',
+            messages: [{
+                role: 'user',
+                content: `Finn de eksakte geografiske koordinatene for stedet: "${location}". Returner JSON: {"lat": number, "lng": number}`
+            }],
+            model: 'claude-sonnet-4-6',
+            max_tokens: 128
+        });
+        return extractJSON(response);
     } catch {
       return { lat: 59.91, lng: 10.75 };
     }
@@ -640,7 +626,7 @@ Returner JSON:
   "mantra": "Et kraftfullt, personlig og originalt mantra på 1-2 setninger som fanger essensen av kartet."
 }`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-opus-4-6', 16000);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-opus-4-6', max_tokens: 16000 });
     const data = extractJSON(raw);
 
     return {
@@ -689,7 +675,7 @@ Returner JSON:
   "conclusion": "En avsluttende visdomsdel med et personlig mantra og råd for fremtiden (minimum 400 ord)."
 }`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-opus-4-6', 8192);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-opus-4-6', max_tokens: 8192 });
     const data = extractJSON(raw);
 
     return {
@@ -717,7 +703,7 @@ JSON-format:
 { "months": [{ "monthName": "...", "theme": "...", "qiLevel": 7, "guidance": "..." }] }`;
 
     try {
-      const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 2048);
+      const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 2048 });
       return extractJSON(raw);
     } catch {
       return { months: [] };
@@ -728,9 +714,6 @@ JSON-format:
 
   generatePersonalizedHoroscope: async (natalChart: CalculatedChart, period: string, lang: Language) => {
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
-    const sunSign = natalChart.positions.find(p => p.name === 'Solen')?.sign || '';
-    const moonSign = natalChart.positions.find(p => p.name === 'Månen')?.sign || '';
-    const ascSign = natalChart.ascendantSign || natalChart.ascendant.split(' ')[0];
     const todayStr = new Date().toLocaleDateString('no-NO', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const keyAspects = natalChart.aspects
@@ -763,7 +746,7 @@ PERIODE: ${periodMap[period] || period}
 
 NATAL KART:
 ${personalCtx}
-Ascendant: ${ascSign} | Chartruler: ${natalChart.chartRuler} i ${natalChart.chartRulerSign}, Hus ${natalChart.chartRulerHouse}
+Ascendant: ${natalChart.ascendantSign} | Chartruler: ${natalChart.chartRuler} i ${natalChart.chartRulerSign}, Hus ${natalChart.chartRulerHouse}
 Dominante element: ${natalChart.dominantElement} | Modalitet: ${natalChart.dominantModality}
 
 VIKTIGE NATALE ASPEKTER:
@@ -778,7 +761,7 @@ Skriv 5 kraftfulle avsnitt (${period === 'year' ? '800+' : '600+'} ord totalt):
 
 Bruk ${natalChart.clientName}s navn direkte og personlig. Vær spesifikk på tegn og hus som blir aktivert.`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3500);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3500 });
     return cleanAstroText(raw);
   },
 
@@ -804,7 +787,7 @@ Natal kart nøkkeldata:
 
 Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Vær konkret om hvilke transitter som påvirker hvilke natale planeter og hus.`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3000);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3000 });
     return cleanAstroText(raw);
   },
 
@@ -820,30 +803,20 @@ Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Væ
     lang: Language
   ) => {
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
-    const cardsList = cards.map((c, i) =>
-      `Posisjon ${i + 1} (${spread.positions?.[i] || 'Ukjent'}): ${c.card?.name || c.name || 'Ukjent'}${c.isReversed ? ' (Reversert)' : ''} (Keywords: ${(c.card?.keywords || []).join(', ')})`
-    ).join('\n');
+    
+    const params = {
+        isTarotReading: true,
+        cards,
+        spread,
+        style,
+        clientData,
+        userContext,
+        lang,
+        model: 'claude-opus-4-6',
+        max_tokens: 4096
+    };
 
-    const systemPrompt = `Du er AstroMasons Tarotmester — en dyp leser med enestående innsikt i symbolikk, sjelsarkitektur og livsnavigasjon. Din visdom er en fusjon av klassisk Rider-Waite-symbolikk, dybdepsykologi og esoterisk filosofi. Du leverer en "world-class" tarot-tolkning som er både poetisk, presis og transformerende.
-Integrer astrologi og tarot-symbolikk på en meningsfull måte. Skriv poetisk, men konkret og handlingsrettet. Ingen Markdown.`;
-
-    const userMessage = `Analyser dette tarotlegget på ${targetLang} for ${clientData.clientName || 'klienten'}.
-
-Spørsmål/kontekst: ${userContext || 'Generell veiledning for sjelens nåværende reise'}
-Stil: ${style} (tolk kortene gjennom denne linsen)
-Leggtype: ${spread.name}
-
-KORT I LEGGET:
-${cardsList}
-
-Struktur for tolkningen:
-1.  **Essens & Overskrift:** Start med en kraftfull, poetisk overskrift og et sammendrag (2-3 setninger) som fanger essensen i legget.
-2.  **Dybdeanalyse av hvert kort:** Gå gjennom hvert kort i sin posisjon. Forklar symbolikken, den psykologiske betydningen, og hvordan det relaterer til klientens spørsmål og de andre kortene. Vev sammen en fortelling.
-3.  **Syntese & Råd:** Avslutt med en mesterlig syntese. Koble sammen trådene fra de enkelte kortene til et helhetlig budskap. Gi ${clientData.clientName} 3-5 konkrete, handlingsorienterte råd for veien videre.
-
-Skriv en sammenhengende, dyp tolkning på 800-1200 ord.`;
-
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-opus-4-6', 4096);
+    const raw = await askClaude(params);
     return cleanAstroText(raw);
   },
 
@@ -866,7 +839,7 @@ Mønstre: ${(chart.patterns || []).map(p => p.type).join(', ') || 'ingen'}
 
 Skriv 3-5 avsnitt med konkrete, innsiktsfulle tolkninger og praktisk veiledning for ${chart.clientName}s personlige vekst og utvikling.`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3000);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3000 });
     return cleanAstroText(raw);
   },
 
@@ -923,7 +896,7 @@ Returner JSON:
   "guidance": "Konkret, praktisk og hjertevarm veiledning for å styrke relasjonen og navigere utfordringer (minimum 300 ord)."
 }`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-opus-4-6', 8192);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-opus-4-6', max_tokens: 8192 });
     const data = extractJSON(raw);
 
     return {
@@ -1018,7 +991,7 @@ Skriv 5 dyptgående avsnitt (800+ ord totalt):
 4. Indre vekst, utfordringer og personlig utvikling: Hvilke indre demoner og skatter vil komme til overflaten?
 5. Strategiske råd og timing: Gi konkrete, måned-for-måned-råd (hvis mulig) og pek på de mest kritiske periodene for handling eller refleksjon.`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3500);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3500 });
     return cleanAstroText(raw);
   },
 
@@ -1101,7 +1074,7 @@ Skriv 5 dyptgående avsnitt (800+ ord totalt):
 4.  **Sjelens Utviklingsvei:** Hovedtemaer for de neste 2-3 årene, basert på bevegelsene til de indre planetene.
 5.  **Personlig Veiledning:** Konkrete råd for hvordan ${natalChart.clientName} kan best samarbeide med disse indre endringene. Hva er sjelen klar for å integrere nå?`;
 
-    const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 3500);
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3500 });
     return cleanAstroText(raw);
   },
 
@@ -1127,7 +1100,7 @@ JSON-format:
 }`;
 
     try {
-      const raw = await askClaude(systemPrompt, userMessage, 'claude-sonnet-4-6', 4096);
+      const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 4096 });
       return extractJSON(raw);
     } catch {
       throw new Error('Numerologi-arkivene er utilgjengelige.');
