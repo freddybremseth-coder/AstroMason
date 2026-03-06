@@ -140,19 +140,26 @@ interface ClaudeParams {
 }
 
 const callClaude = async (params: ClaudeParams) => {
-  const res = await fetch('/api/claude', { // Use the proxy
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error?.message || `HTTP ${res.status}`);
-  }
-  return res.json() as Promise<{ content: { type: string; text: string }[] }>;
-};
+    const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
+    if (!apiKey) {
+      throw new Error('Ingen API-nøkkel funnet. Gå til Innstillinger og lim inn din Anthropic API-nøkkel (sk-ant-...).');
+    }
+
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error?.message || `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<{ content: { type: string; text: string }[] }>;
+  };
 
 
 const getClient = () => ({

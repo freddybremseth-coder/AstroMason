@@ -14,22 +14,12 @@ async function readBody(req) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Allow Authorization header
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Debug: sjekk om env var er satt
-  if (req.method === 'GET') {
-    return res.status(200).json({
-      hasKey: !!process.env.ANTHROPIC_API_KEY,
-      keyLength: process.env.ANTHROPIC_API_KEY?.length || 0,
-      nodeEnv: process.env.NODE_ENV || 'ukjent',
-    });
-  }
-
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Parse body — Vercel ESM runtime may not auto-parse JSON
   const body = (req.body && typeof req.body === 'object') ? req.body : await readBody(req);
 
   const {
@@ -37,10 +27,10 @@ export default async function handler(req, res) {
     max_tokens = 4096,
     system,
     messages,
-    apiKey,
   } = body;
 
-  const key = process.env.ANTHROPIC_API_KEY || apiKey;
+  const authHeader = req.headers.authorization;
+  const key = authHeader ? authHeader.split(' ')[1] : process.env.ANTHROPIC_API_KEY;
 
   if (!key) {
     return res.status(401).json({ error: 'Ingen API-nøkkel. Sett ANTHROPIC_API_KEY i Vercel Environment Variables, eller lim inn nøkkelen i Innstillinger.' });
