@@ -3,7 +3,6 @@ import {
   CalculatedChart, PlanetPosition, Aspect, AstrologyMode, Language,
   ChartPattern, EssentialDignity, ElementBalance
 } from '../types';
-import { generateCustomTarotPrompt } from './tarot-ai-system';
 
 declare global {
   interface Window { Astronomy: any; }
@@ -141,17 +140,10 @@ interface ClaudeParams {
 }
 
 const callClaude = async (params: ClaudeParams) => {
-  const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
-  if (!apiKey) {
-    throw new Error('Ingen API-nøkkel funnet. Gå til Innstillinger og lim inn din Anthropic API-nøkkel (sk-ant-...).');
-  }
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('/api/claude', { // Use the proxy
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify(params),
   });
