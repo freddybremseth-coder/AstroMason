@@ -281,7 +281,7 @@ async function readBody(req) {
         }
 
         const cardsList = cards.map((c, i) =>
-            `Posisjon ${i + 1} (${spread.positions?.[i] || 'Ukjent'}): ${c.card?.name || c.name || 'Ukjent'}${c.isReversed ? ' (Reversert)' : ''} (Keywords: ${(c.card?.keywords || []).join(', ')})`
+            `Posisjon ${i + 1} (${spread.positions?.[i]?.positionName || 'Ukjent'}): ${c.card?.name || c.name || 'Ukjent'}${c.isReversed ? ' (Reversert)' : ''} (Keywords: ${(c.card?.keywords || []).join(', ')})`
         ).join('\n');
         
         const spreadName = spread?.name || 'Ukjent legg';
