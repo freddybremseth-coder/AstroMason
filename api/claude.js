@@ -276,8 +276,8 @@ async function readBody(req) {
     if (rest.isTarotReading) {
         const { cards, spread, style, userContext, clientData } = rest;
 
-        if (!cards || !spread || !clientData) {
-            return res.status(400).json({ error: 'Mangler 'cards', 'spread' eller 'clientData' for tarot-tolkning.' });
+        if (!cards || !spread) {
+            return res.status(400).json({ error: 'Mangler 'cards' eller 'spread' for tarot-tolkning.' });
         }
 
         const cardsList = cards.map((c, i) =>
