@@ -273,17 +273,25 @@ async function readBody(req) {
     let finalSystem = system;
     let finalMessages = messages;
 
-    // Check if this is a tarot reading request
     if (rest.isTarotReading) {
         const { cards, spread, style, userContext, clientData } = rest;
+
+        if (!cards || !spread || !clientData) {
+            return res.status(400).json({ error: 'Mangler 'cards', 'spread' eller 'clientData' for tarot-tolkning.' });
+        }
+
         const cardsList = cards.map((c, i) =>
             `Posisjon ${i + 1} (${spread.positions?.[i] || 'Ukjent'}): ${c.card?.name || c.name || 'Ukjent'}${c.isReversed ? ' (Reversert)' : ''} (Keywords: ${(c.card?.keywords || []).join(', ')})`
         ).join('\n');
+        
+        const spreadName = spread?.name || 'Ukjent legg';
+        const clientName = clientData?.clientName || 'klienten';
+        const question = userContext || 'Generell veiledning';
 
-        finalSystem = generateCustomTarotPrompt(style, spread.name, userContext || 'Generell veiledning', clientData.clientName);
+        finalSystem = generateCustomTarotPrompt(style, spreadName, question, clientName);
         finalMessages = [{
             role: 'user',
-            content: `Analyser dette tarotlegget for ${clientData.clientName || 'klienten'}.\n\nKORT I LEGGET:\n${cardsList}`
+            content: `Analyser dette tarotlegget for ${clientName}.\n\nKORT I LEGGET:\n${cardsList}`
         }];
     }
 
