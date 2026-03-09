@@ -34,7 +34,9 @@ export const authService = {
     if (data.user && !error) {
       localStorage.setItem('soul_email', email.toLowerCase());
     }
-    return { user: data.user, error, isDemo: false };
+    // If session is null after signup, email confirmation is required
+    const needsConfirmation = !!(data.user && !data.session && !error);
+    return { user: data.user, session: data.session, error, isDemo: false, needsConfirmation };
   },
 
   signIn: async (email: string, password: string) => {

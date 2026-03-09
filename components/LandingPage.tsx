@@ -20,6 +20,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forgotSent, setForgotSent] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const { lang, setLang } = useContext(LangContext);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -49,7 +50,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       }
 
       if (authMode === 'register') {
-        const { user, error: signUpErr, isDemo } = await authService.signUp(cleanEmail, password, name);
+        const { user, error: signUpErr, isDemo, needsConfirmation } = await authService.signUp(cleanEmail, password, name);
         if (signUpErr) {
           const msg = (signUpErr as any).message || '';
           if (msg.includes('already registered')) {
@@ -59,6 +60,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           } else {
             setError(msg || 'Registrering mislyktes. Prøv igjen.');
           }
+          setIsProcessing(false);
+          return;
+        }
+        if (needsConfirmation) {
+          // Email confirmation is required — don't log in yet
+          setConfirmationSent(true);
           setIsProcessing(false);
           return;
         }
@@ -168,7 +175,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">{t.authDesc}</p>
             </div>
 
-            {forgotSent ? (
+            {confirmationSent ? (
+              <div className="text-center space-y-6">
+                <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+                  <Mail size={32} className="text-amber-500" />
+                </div>
+                <p className="text-slate-300">En bekreftelses-e-post er sendt til <span className="text-amber-400">{email}</span></p>
+                <p className="text-slate-500 text-xs">Klikk på lenken i e-posten for å aktivere kontoen din, og logg deretter inn.</p>
+                <button onClick={() => { setConfirmationSent(false); setAuthMode('login'); setError(null); }} className="text-[10px] font-black uppercase tracking-widest text-amber-500 hover:underline">Gå til innlogging</button>
+              </div>
+            ) : forgotSent ? (
               <div className="text-center space-y-6">
                 <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto border border-green-500/20">
                   <CircleCheck size={32} className="text-green-500" />
@@ -206,7 +222,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </form>
             )}
 
-            {!forgotSent && (
+            {!forgotSent && !confirmationSent && (
             <div className="mt-8 space-y-4 text-center">
                 {authMode === 'login' && (
                     <button onClick={() => { setAuthMode('forgot'); setError(null); }} className="text-[9px] text-slate-500 hover:text-amber-500 uppercase font-black tracking-widest transition-colors block mx-auto">
