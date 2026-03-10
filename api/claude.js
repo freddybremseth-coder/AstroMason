@@ -261,7 +261,7 @@ async function readBody(req) {
   
     const body = (req.body && typeof req.body === 'object') ? req.body : await readBody(req);
   
-    const { model = 'claude-sonnet-4-6', max_tokens = 4096, system, messages, ...rest } = body;
+    const { model = 'claude-3-sonnet-20240229', max_tokens = 4096, system, messages, ...rest } = body;
   
     const authHeader = req.headers.authorization;
     const key = authHeader ? authHeader.split(' ')[1] : process.env.ANTHROPIC_API_KEY;
