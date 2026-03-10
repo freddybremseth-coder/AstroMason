@@ -364,7 +364,7 @@ export const AstrologyService = {
                 role: 'user',
                 content: `Finn de eksakte geografiske koordinatene for stedet: "${location}". Returner JSON: {"lat": number, "lng": number}`
             }],
-            model: 'claude-sonnet-4-6',
+            model: 'claude-3-sonnet-20240229',
             max_tokens: 128
         });
         return extractJSON(response);
@@ -626,7 +626,7 @@ Returner JSON:
   "mantra": "Et kraftfullt, personlig og originalt mantra på 1-2 setninger som fanger essensen av kartet."
 }`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-opus-4-6', max_tokens: 16000 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-opus-20240229', max_tokens: 16000 });
     const data = extractJSON(raw);
 
     return {
@@ -675,7 +675,7 @@ Returner JSON:
   "conclusion": "En avsluttende visdomsdel med et personlig mantra og råd for fremtiden (minimum 400 ord)."
 }`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-opus-4-6', max_tokens: 8192 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-opus-20240229', max_tokens: 8192 });
     const data = extractJSON(raw);
 
     return {
@@ -703,7 +703,7 @@ JSON-format:
 { "months": [{ "monthName": "...", "theme": "...", "qiLevel": 7, "guidance": "..." }] }`;
 
     try {
-      const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 2048 });
+      const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 2048 });
       return extractJSON(raw);
     } catch {
       return { months: [] };
@@ -761,7 +761,7 @@ Skriv 5 kraftfulle avsnitt (${period === 'year' ? '800+' : '600+'} ord totalt):
 
 Bruk ${natalChart.clientName}s navn direkte og personlig. Vær spesifikk på tegn og hus som blir aktivert.`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3500 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3500 });
     return cleanAstroText(raw);
   },
 
@@ -787,7 +787,7 @@ Natal kart nøkkeldata:
 
 Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Vær konkret om hvilke transitter som påvirker hvilke natale planeter og hus.`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3000 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3000 });
     return cleanAstroText(raw);
   },
 
@@ -812,7 +812,7 @@ Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Væ
         clientData,
         userContext,
         lang,
-        model: 'claude-opus-4-6',
+        model: 'claude-3-opus-20240229',
         max_tokens: 4096
     };
 
@@ -839,7 +839,7 @@ Mønstre: ${(chart.patterns || []).map(p => p.type).join(', ') || 'ingen'}
 
 Skriv 3-5 avsnitt med konkrete, innsiktsfulle tolkninger og praktisk veiledning for ${chart.clientName}s personlige vekst og utvikling.`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3000 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3000 });
     return cleanAstroText(raw);
   },
 
@@ -896,7 +896,7 @@ Returner JSON:
   "guidance": "Konkret, praktisk og hjertevarm veiledning for å styrke relasjonen og navigere utfordringer (minimum 300 ord)."
 }`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-opus-4-6', max_tokens: 8192 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-opus-20240229', max_tokens: 8192 });
     const data = extractJSON(raw);
 
     return {
@@ -991,7 +991,7 @@ Skriv 5 dyptgående avsnitt (800+ ord totalt):
 4. Indre vekst, utfordringer og personlig utvikling: Hvilke indre demoner og skatter vil komme til overflaten?
 5. Strategiske råd og timing: Gi konkrete, måned-for-måned-råd (hvis mulig) og pek på de mest kritiske periodene for handling eller refleksjon.`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3500 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3500 });
     return cleanAstroText(raw);
   },
 
@@ -1074,7 +1074,7 @@ Skriv 5 dyptgående avsnitt (800+ ord totalt):
 4.  **Sjelens Utviklingsvei:** Hovedtemaer for de neste 2-3 årene, basert på bevegelsene til de indre planetene.
 5.  **Personlig Veiledning:** Konkrete råd for hvordan ${natalChart.clientName} kan best samarbeide med disse indre endringene. Hva er sjelen klar for å integrere nå?`;
 
-    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 3500 });
+    const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3500 });
     return cleanAstroText(raw);
   },
 
@@ -1100,7 +1100,7 @@ JSON-format:
 }`;
 
     try {
-      const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-sonnet-4-6', max_tokens: 4096 });
+      const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 4096 });
       return extractJSON(raw);
     } catch {
       throw new Error('Numerologi-arkivene er utilgjengelige.');
