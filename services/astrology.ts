@@ -742,7 +742,7 @@ Ingen Markdown. Skriv direkte, varmt og med astrologisk presisjon.`;
 
     const userMessage = `Skriv et dypt personlig horoskop på ${targetLang} for ${natalChart.clientName}.
 
-PERIODE: ${periodMap[period] || period}
+PERIode: ${periodMap[period] || period}
 
 NATAL KART:
 ${personalCtx}
@@ -804,9 +804,22 @@ Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Væ
   ) => {
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
     
+    // FIX: Standardize card data structure before sending
+    const sanitizedCards = cards.map(c => {
+      const cardData = c.card || c; // Handle nested and flat structures
+      return {
+        name: cardData.name,
+        suit: cardData.suit || 'major',
+        img: cardData.img, // Ensure img is passed
+        keywords: cardData.keywords || [],
+        meaning: cardData.meaning || '',
+        isReversed: c.isReversed || false
+      };
+    });
+
     const params = {
         isTarotReading: true,
-        cards,
+        cards: sanitizedCards, // Use the sanitized array
         spread,
         style,
         clientData,
