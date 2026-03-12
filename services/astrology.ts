@@ -580,51 +580,9 @@ export const AstrologyService = {
       .map(d => `• ${d.planet} i ${d.sign}: ${d.status}`)
       .join('\n') || 'Ingen dominante verdigheter';
 
-    const systemPrompt = `Du er AstroMason — en mesterlig astrologisk tolkningskunstner med dyp kunnskap innen ${mode === 'vedic' ? 'Vedisk/Jyotish' : mode === 'esoteric' ? 'Esoterisk/Alice Bailey' : mode === 'classical' ? 'Klassisk vestlig' : 'Integrert vestlig'} astrologi. Din innsikt er ikke bare korrekt, men transformerende. Du skriver med en sjelden kombinasjon av poetisk eleganse og knivskarp presisjon, og leverer en analyse som er både dypt personlig og universelt gjenkjennelig. Målet ditt er å levere en "world-class" opplevelse som overgår alt annet på markedet.
+    const systemPrompt = `Du er AstroMason — en mesterlig astrologisk tolkningskunstner med dyp kunnskap innen ${mode === 'vedic' ? 'Vedisk/Jyotish' : mode === 'esoteric' ? 'Esoterisk/Alice Bailey' : mode === 'classical' ? 'Klassisk vestlig' : 'Integrert vestlig'} astrologi. Din innsikt er ikke bare korrekt, men transformerende. Du skriver med en sjelden kombinasjon av poetisk eleganse og knivskarp presisjon, og leverer en analyse som er både dypt personlig og universelt gjenkjennelig. Målet ditt er å levere en "world-class" opplevelse som overgår alt annet på markedet.\n\nOPPGAVE: Produser en fullstendig, dyptgående og gripende astrologisk Livsbok på ${targetLang} for ${chart.clientName} — minimum 4000 ord totalt, rikt og poetisk, men presist. Gå dypere enn noen annen astrologisk tolkning. Dette er et premium produkt.\n\nREGLER:\n- INGEN Markdown-tegn (**, ##, __, ---)\n- Skriv overskrifter med store bokstaver for en majestetisk følelse\n- Vær dypt personlig, bruk klientens navn. Få dem til å føle seg sett og forstått på et sjelelig nivå.\n- Integrer planettegn, hus OG aspekter i hvert avsnitt. Ikke bare list dem opp, vev dem sammen til en helhetlig fortelling.\n- Tolk mønstrene (${(chart.patterns || []).map(p => p.type).join(', ') || 'ingen'}) som den hellige geometrien i klientens sjel.\n- Dominante element: ${chart.dominantElement} — la dette være den røde tråden som farger hele rapporten.\n- Chartruler: ${chart.chartRuler} i ${chart.chartRulerSign}, Hus ${chart.chartRulerHouse} — fremhev dette som nøkkelen til sjelens formål.\n- Returner KUN gyldig JSON uten \`\`\`-blokker. Strukturen må være perfekt.`;
 
-OPPGAVE: Produser en fullstendig, dyptgående og gripende astrologisk Livsbok på ${targetLang} for ${chart.clientName} — minimum 4000 ord totalt, rikt og poetisk, men presist. Gå dypere enn noen annen astrologisk tolkning. Dette er et premium produkt.
-
-REGLER:
-- INGEN Markdown-tegn (**, ##, __, ---)
-- Skriv overskrifter med store bokstaver for en majestetisk følelse
-- Vær dypt personlig, bruk klientens navn. Få dem til å føle seg sett og forstått på et sjelelig nivå.
-- Integrer planettegn, hus OG aspekter i hvert avsnitt. Ikke bare list dem opp, vev dem sammen til en helhetlig fortelling.
-- Tolk mønstrene (${(chart.patterns || []).map(p => p.type).join(', ') || 'ingen'}) som den hellige geometrien i klientens sjel.
-- Dominante element: ${chart.dominantElement} — la dette være den røde tråden som farger hele rapporten.
-- Chartruler: ${chart.chartRuler} i ${chart.chartRulerSign}, Hus ${chart.chartRulerHouse} — fremhev dette som nøkkelen til sjelens formål.
-- Returner KUN gyldig JSON uten \`\`\`-blokker. Strukturen må være perfekt.`;
-
-    const userMessage = `Generer "Livsbok" for klient: ${chart.clientName}
-Analyse-type: ${type}
-Tradisjon: ${mode}
-
-PLANETER:
-${planetsContext}
-
-ASPEKTER:
-${aspectsContext}
-
-CHARTMØNSTRE:
-${patternsContext}
-
-ESSENSIELLE VERDIGHETER:
-${dignitiesContext}
-
-DOMINANS: Element: ${chart.dominantElement} | Modalitet: ${chart.dominantModality}
-ASCENDANT: ${chart.ascendant} | MC: ${chart.mc}
-CHARTRULER: ${chart.chartRuler} i ${chart.chartRulerSign}, Hus ${chart.chartRulerHouse}
-
-Returner JSON:
-{
-  "title": "En unik og majestetisk boktittel for ${chart.clientName}",
-  "essenceSummary": "En dyptpløyende introduksjon til sjelens essens og livsformål, basert på Ascendant, Solen, Månen og chartruler (minimum 800 ord).",
-  "planetChapters": [
-    { "planet": "planettnavn", "content": "En fullstendig og dyptgående tolkning av planetens posisjon, hus og alle dens aspekter. Avdekk de psykologiske og sjelelige implikasjonene (minimum 300 ord per planet)." }
-  ],
-  "patternsAndThemes": "En mesterlig analyse av chartmønstre og overordnede livstemaer. Forklar hvordan energien flyter i kartet som en helhet (minimum 500 ord).",
-  "lifePathGuidance": "Fremtidsrettet veiledning og sjel-evolusjon. Gi konkrete råd for hvordan ${chart.clientName} kan navigere sitt liv og maksimere sitt potensial (minimum 500 ord).",
-  "mantra": "Et kraftfullt, personlig og originalt mantra på 1-2 setninger som fanger essensen av kartet."
-}`;
+    const userMessage = `Generer "Livsbok" for klient: ${chart.clientName}\nAnalyse-type: ${type}\nTradisjon: ${mode}\n\nPLANETER:\n${planetsContext}\n\nASPEKTER:\n${aspectsContext}\n\nCHARTMØNSTRE:\n${patternsContext}\n\nESSENSIELLE VERDIGHETER:\n${dignitiesContext}\n\nDOMINANS: Element: ${chart.dominantElement} | Modalitet: ${chart.dominantModality}\nASCENDANT: ${chart.ascendant} | MC: ${chart.mc}\nCHARTRULER: ${chart.chartRuler} i ${chart.chartRulerSign}, Hus ${chart.chartRulerHouse}\n\nReturner JSON:\n{\n  "title": "En unik og majestetisk boktittel for ${chart.clientName}",\n  "essenceSummary": "En dyptpløyende introduksjon til sjelens essens og livsformål, basert på Ascendant, Solen, Månen og chartruler (minimum 800 ord).",\n  "planetChapters": [\n    { "planet": "planettnavn", "content": "En fullstendig og dyptgående tolkning av planetens posisjon, hus og alle dens aspekter. Avdekk de psykologiske og sjelelige implikasjonene (minimum 300 ord per planet)." }\n  ],\n  "patternsAndThemes": "En mesterlig analyse av chartmønstre og overordnede livstemaer. Forklar hvordan energien flyter i kartet som en helhet (minimum 500 ord).",\n  "lifePathGuidance": "Fremtidsrettet veiledning og sjel-evolusjon. Gi konkrete råd for hvordan ${chart.clientName} kan navigere sitt liv og maksimere sitt potensial (minimum 500 ord).",\n  "mantra": "Et kraftfullt, personlig og originalt mantra på 1-2 setninger som fanger essensen av kartet."\n}`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-opus-20240229', max_tokens: 16000 });
     const data = extractJSON(raw);
@@ -648,32 +606,9 @@ Returner JSON:
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
     const cz = AstrologyService.calculateChineseZodiac(date);
 
-    const systemPrompt = `Du er Den Vise Østen — en mester i kinesisk metafysikk, Ba Zi (Fire Søyler) og Wu Xing (De fem elementer). Din visdom er eldgammel og din formidling er krystallklar og poetisk. Du leverer en "world-class" opplevelse.
+    const systemPrompt = `Du er Den Vise Østen — en mester i kinesisk metafysikk, Ba Zi (Fire Søyler) og Wu Xing (De fem elementer). Din visdom er eldgammel og din formidling er krystallklar og poetisk. Du leverer en "world-class" opplevelse.\n\nOPPGAVE: Skriv en dyp, poetisk og innsiktsfull kinesisk livskrønike på ${targetLang} for ${name}.\nIntegrer: Dyreboligtegn (${cz.animal}), element (${cz.element}), Yin/Yang (${cz.yinYang}), Wu Xing-harmonier, og transformasjonssykler. Forklar hvordan disse elementene samspiller for å forme personens skjebne og karakter.\n\nREGLER:\n- INGEN Markdown\n- Minimum 3000 ord totalt\n- Returner KUN gyldig JSON uten \`\`\`-blokker.`;
 
-OPPGAVE: Skriv en dyp, poetisk og innsiktsfull kinesisk livskrønike på ${targetLang} for ${name}.
-Integrer: Dyreboligtegn (${cz.animal}), element (${cz.element}), Yin/Yang (${cz.yinYang}), Wu Xing-harmonier, og transformasjonssykler. Forklar hvordan disse elementene samspiller for å forme personens skjebne og karakter.
-
-REGLER:
-- INGEN Markdown
-- Minimum 3000 ord totalt
-- Returner KUN gyldig JSON uten \`\`\`-blokker.`;
-
-    const userMessage = `Klient: ${name}
-Fødselsdato: ${date}
-Kinesisk Dyreboligtegn: ${cz.animal}
-Element: ${cz.element}
-Yin/Yang: ${cz.yinYang}
-År: ${cz.year}
-
-Returner JSON:
-{
-  "title": "En poetisk og passende tittel for kroniken",
-  "introduction": "En dyptpløyende introduksjon til klientens kjerneenergi, basert på dyretegn og element (minimum 600 ord).",
-  "chapters": [
-    { "heading": "Et passende kapittelnavn", "content": "Utfyllende innhold om livsområder som personlighet, karriere, kjærlighet og helse (minimum 400 ord per kapittel)." }
-  ],
-  "conclusion": "En avsluttende visdomsdel med et personlig mantra og råd for fremtiden (minimum 400 ord)."
-}`;
+    const userMessage = `Klient: ${name}\nFødselsdato: ${date}\nKinesisk Dyreboligtegn: ${cz.animal}\nElement: ${cz.element}\nYin/Yang: ${cz.yinYang}\nÅr: ${cz.year}\n\nReturner JSON:\n{\n  "title": "En poetisk og passende tittel for kroniken",\n  "introduction": "En dyptpløyende introduksjon til klientens kjerneenergi, basert på dyretegn og element (minimum 600 ord).",\n  "chapters": [\n    { "heading": "Et passende kapittelnavn", "content": "Utfyllende innhold om livsområder som personlighet, karriere, kjærlighet og helse (minimum 400 ord per kapittel)." }\n  ],\n  "conclusion": "En avsluttende visdomsdel med et personlig mantra og råd for fremtiden (minimum 400 ord)."\n}`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-opus-20240229', max_tokens: 8192 });
     const data = extractJSON(raw);
@@ -696,11 +631,7 @@ Returner JSON:
     const cz = AstrologyService.calculateChineseZodiac(date);
 
     const systemPrompt = `Du er en kinesisk astrologimester. Svar KUN med gyldig JSON, ingen forklaring.`;
-    const userMessage = `Generer en 12-måneders Qi-syklus på ${targetLang} for ${name} (${cz.animal}, ${cz.element}, ${cz.yinYang}).
-For hver måned: navn, tema, qiNivå (1-10), veiledning (2-3 setninger).
-
-JSON-format:
-{ "months": [{ "monthName": "...", "theme": "...", "qiLevel": 7, "guidance": "..." }] }`;
+    const userMessage = `Generer en 12-måneders Qi-syklus på ${targetLang} for ${name} (${cz.animal}, ${cz.element}, ${cz.yinYang}).\nFor hver måned: navn, tema, qiNivå (1-10), veiledning (2-3 setninger).\n\nJSON-format:\n{ "months": [{ "monthName": "...", "theme": "...", "qiLevel": 7, "guidance": "..." }] }`;
 
     try {
       const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 2048 });
@@ -728,10 +659,7 @@ JSON-format:
       .map(p => `${p.name}${p.isRetrograde ? '(R)' : ''}: ${p.sign} ${p.degree}°, Hus ${p.house}`)
       .join(' | ');
 
-    const systemPrompt = `Du er AstroMason — en mesterlig astrologisk veileder med dyp innsikt i transitter og natale mønstre. Du leverer "world-class" horoskoper som er personlige, dyptpløyende og praktisk anvendelige.
-Skriv personlige, konkrete horoskoper som oppleves skreddersydd til denne personen. Unngå generiske fraser. Vær en vis og pålitelig veileder.
-Inkluder spesifikke livsområder: kjærlighet, karriere, økonomi, helse og indre vekst.
-Ingen Markdown. Skriv direkte, varmt og med astrologisk presisjon.`;
+    const systemPrompt = `Du er AstroMason — en mesterlig astrologisk veileder med dyp innsikt i transitter og natale mønstre. Du leverer "world-class" horoskoper som er personlige, dyptpløyende og praktisk anvendelige.\nSkriv personlige, konkrete horoskoper som oppleves skreddersydd til denne personen. Unngå generiske fraser. Vær en vis og pålitelig veileder.\nInkluder spesifikke livsområder: kjærlighet, karriere, økonomi, helse og indre vekst.\nIngen Markdown. Skriv direkte, varmt og med astrologisk presisjon.`;
 
     const periodMap: Record<string, string> = {
       day: 'DAGEN i dag (' + todayStr + ')',
@@ -740,26 +668,7 @@ Ingen Markdown. Skriv direkte, varmt og med astrologisk presisjon.`;
       year: 'HELE ÅRET fremover'
     };
 
-    const userMessage = `Skriv et dypt personlig horoskop på ${targetLang} for ${natalChart.clientName}.
-
-PERIode: ${periodMap[period] || period}
-
-NATAL KART:
-${personalCtx}
-Ascendant: ${natalChart.ascendantSign} | Chartruler: ${natalChart.chartRuler} i ${natalChart.chartRulerSign}, Hus ${natalChart.chartRulerHouse}
-Dominante element: ${natalChart.dominantElement} | Modalitet: ${natalChart.dominantModality}
-
-VIKTIGE NATALE ASPEKTER:
-${keyAspects || 'Ingen dominante aspekter'}
-
-Skriv 5 kraftfulle avsnitt (${period === 'year' ? '800+' : '600+'} ord totalt):
-1. Overordnet energi og tema for perioden: Hva er det kosmiske hovedfokuset for ${natalChart.clientName} nå?
-2. Kjærlighet, relasjoner og følelsesliv: Hvordan vil transittene påvirke hjerte og relasjoner?
-3. Karriere, økonomi og kreativitet: Hvilke muligheter og utfordringer ligger i arbeid og finans?
-4. Indre vekst, åndelig utvikling og selvrefleksjon: Hvilke sjelelige lekser og vekstmuligheter presenterer seg?
-5. Konkrete råd og timing — hva bør gjøres nå? Gi praktiske, handlingsorienterte råd og indiker gunstige tidsvinduer.
-
-Bruk ${natalChart.clientName}s navn direkte og personlig. Vær spesifikk på tegn og hus som blir aktivert.`;
+    const userMessage = `Skriv et dypt personlig horoskop på ${targetLang} for ${natalChart.clientName}.\n\nPERIode: ${periodMap[period] || period}\n\nNATAL KART:\n${personalCtx}\nAscendant: ${natalChart.ascendantSign} | Chartruler: ${natalChart.chartRuler} i ${natalChart.chartRulerSign}, Hus ${natalChart.chartRulerHouse}\nDominante element: ${natalChart.dominantElement} | Modalitet: ${natalChart.dominantModality}\n\nVIKTIGE NATALE ASPEKTER:\n${keyAspects || 'Ingen dominante aspekter'}\n\nSkriv 5 kraftfulle avsnitt (${period === 'year' ? '800+' : '600+'} ord totalt):\n1. Overordnet energi og tema for perioden: Hva er det kosmiske hovedfokuset for ${natalChart.clientName} nå?\n2. Kjærlighet, relasjoner og følelsesliv: Hvordan vil transittene påvirke hjerte og relasjoner?\n3. Karriere, økonomi og kreativitet: Hvilke muligheter og utfordringer ligger i arbeid og finans?\n4. Indre vekst, åndelig utvikling og selvrefleksjon: Hvilke sjelelige lekser og vekstmuligheter presenterer seg?\n5. Konkrete råd og timing — hva bør gjøres nå? Gi praktiske, handlingsorienterte råd og indiker gunstige tidsvinduer.\n\nBruk ${natalChart.clientName}s navn direkte og personlig. Vær spesifikk på tegn og hus som blir aktivert.`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3500 });
     return cleanAstroText(raw);
@@ -771,21 +680,9 @@ Bruk ${natalChart.clientName}s navn direkte og personlig. Vær spesifikk på teg
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
     const today = new Date().toLocaleDateString('no-NO', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    const systemPrompt = `Du er AstroMason Transitanalytiker, en "world-class" ekspert på å tolke de daglige bevegelsene på himmelen og deres innvirkning på et natalt kart. Du er presis, innsiktsfull og gir praktiske råd.
-Ingen Markdown. Bruk klientens navn gjentakende for en personlig tone.`;
+    const systemPrompt = `Du er AstroMason Transitanalytiker, en "world-class" ekspert på å tolke de daglige bevegelsene på himmelen og deres innvirkning på et natalt kart. Du er presis, innsiktsfull og gir praktiske råd.\nIngen Markdown. Bruk klientens navn gjentakende for en personlig tone.`;
 
-    const userMessage = `Analyser ukens (fra ${today}) kosmiske energier på ${targetLang} for ${natalChart.clientName}.
-
-Natal kart nøkkeldata:
-• Sol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}
-• Måne: ${natalChart.positions.find(p => p.name === 'Månen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Månen')?.house}
-• Merkur: ${natalChart.positions.find(p => p.name === 'Merkur')?.sign}
-• Venus: ${natalChart.positions.find(p => p.name === 'Venus')?.sign}
-• Mars: ${natalChart.positions.find(p => p.name === 'Mars')?.sign}
-• Ascendant: ${natalChart.ascendant}
-• Dominante element: ${natalChart.dominantElement}
-
-Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Vær konkret om hvilke transitter som påvirker hvilke natale planeter og hus.`;
+    const userMessage = `Analyser ukens (fra ${today}) kosmiske energier på ${targetLang} for ${natalChart.clientName}.\n\nNatal kart nøkkeldata:\n• Sol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}\n• Måne: ${natalChart.positions.find(p => p.name === 'Månen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Månen')?.house}\n• Merkur: ${natalChart.positions.find(p => p.name === 'Merkur')?.sign}\n• Venus: ${natalChart.positions.find(p => p.name === 'Venus')?.sign}\n• Mars: ${natalChart.positions.find(p => p.name === 'Mars')?.sign}\n• Ascendant: ${natalChart.ascendant}\n• Dominante element: ${natalChart.dominantElement}\n\nFokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Vær konkret om hvilke transitter som påvirker hvilke natale planeter og hus.`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3000 });
     return cleanAstroText(raw);
@@ -825,7 +722,7 @@ Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Væ
         clientData,
         userContext,
         lang,
-        model: 'claude-3-opus-20240229',
+        model: 'claude-3-sonnet-20240229',
         max_tokens: 4096
     };
 
@@ -841,16 +738,9 @@ Fokuser på: kjærlighet, karriere, indre vekst og energinivåer denne uken. Væ
       .map(p => `${p.name}${p.isRetrograde ? '(R)' : ''}: ${p.sign} ${p.degree}°, Hus ${p.house}`)
       .join(' | ');
 
-    const systemPrompt = `Du er AstroMasons Dybdekronikør, en "world-class" ekspert på ${type}-analyse. Du avdekker de dypeste lagene av sjelens utvikling med presisjon og visdom.
-Ingen Markdown.`;
+    const systemPrompt = `Du er AstroMasons Dybdekronikør, en "world-class" ekspert på ${type}-analyse. Du avdekker de dypeste lagene av sjelens utvikling med presisjon og visdom.\nIngen Markdown.`;
 
-    const userMessage = `Generer en dyptpløyende ${type}-kronike på ${targetLang} for ${chart.clientName}.
-
-Posisjoner: ${planetsContext}
-Ascendant: ${chart.ascendant} | MC: ${chart.mc}
-Mønstre: ${(chart.patterns || []).map(p => p.type).join(', ') || 'ingen'}
-
-Skriv 3-5 avsnitt med konkrete, innsiktsfulle tolkninger og praktisk veiledning for ${chart.clientName}s personlige vekst og utvikling.`;
+    const userMessage = `Generer en dyptpløyende ${type}-kronike på ${targetLang} for ${chart.clientName}.\n\nPosisjoner: ${planetsContext}\nAscendant: ${chart.ascendant} | MC: ${chart.mc}\nMønstre: ${(chart.patterns || []).map(p => p.type).join(', ') || 'ingen'}\n\nSkriv 3-5 avsnitt med konkrete, innsiktsfulle tolkninger og praktisk veiledning for ${chart.clientName}s personlige vekst og utvikling.`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3000 });
     return cleanAstroText(raw);
@@ -861,8 +751,7 @@ Skriv 3-5 avsnitt med konkrete, innsiktsfulle tolkninger og praktisk veiledning 
   generateSynastryReport: async (chart1: CalculatedChart, chart2: CalculatedChart, lang: Language) => {
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
 
-    const systemPrompt = `Du er AstroMasons Synastri-mester, en "world-class" relasjonsastrolog som avdekker den kosmiske arkitekturen mellom to sjeler med enestående dybde og klarhet.
-Integrer planettolkninger, aspekter og hussymbolikk for å skape en rik og nyansert fortelling om deres samspill. Ingen Markdown.`;
+    const systemPrompt = `Du er AstroMasons Synastri-mester, en "world-class" relasjonsastrolog som avdekker den kosmiske arkitekturen mellom to sjeler med enestående dybde og klarhet.\nIntegrer planettolkninger, aspekter og hussymbolikk for å skape en rik og nyansert fortelling om deres samspill. Ingen Markdown.`;
 
     const p1 = chart1.positions.map(p => `${p.name}: ${p.sign}, Hus ${p.house}`).join(' | ');
     const p2 = chart2.positions.map(p => `${p.name}: ${p.sign}, Hus ${p.house}`).join(' | ');
@@ -888,26 +777,7 @@ Integrer planettolkninger, aspekter og hussymbolikk for å skape en rik og nyans
       }
     }
 
-    const userMessage = `Analyser synastri på ${targetLang} mellom ${chart1.clientName} og ${chart2.clientName}.
-
-${chart1.clientName}:
-${p1} | Asc: ${chart1.ascendant} | Chartruler: ${chart1.chartRuler} i ${chart1.chartRulerSign}
-
-${chart2.clientName}:
-${p2} | Asc: ${chart2.ascendant} | Chartruler: ${chart2.chartRuler} i ${chart2.chartRulerSign}
-
-VIKTIGE KRYSS-ASPEKTER:
-${crossAspects.slice(0, 12).join('\n') || 'Beregnes dynamisk'}
-
-Returner JSON:
-{
-  "title": "En poetisk og innsiktsfull tittel for deres relasjon",
-  "overview": "En mesterlig oversikt over relasjonens kjerne-dynamikk, tiltrekning og samspill (minimum 600 ord).",
-  "strengths": "En dyptgående analyse av styrkepunkter, harmoni og hva som binder dem sammen på et sjelelig nivå (minimum 500 ord).",
-  "challenges": "En konstruktiv utforskning av utfordringer, friksjonspunkter og vekstmuligheter (minimum 400 ord).",
-  "karmaticThemes": "En esoterisk analyse av karmiske temaer, tidligere livsforbindelser og felles sjelelig formål (minimum 400 ord).",
-  "guidance": "Konkret, praktisk og hjertevarm veiledning for å styrke relasjonen og navigere utfordringer (minimum 300 ord)."
-}`;
+    const userMessage = `Analyser synastri på ${targetLang} mellom ${chart1.clientName} og ${chart2.clientName}.\n\n${chart1.clientName}:\n${p1} | Asc: ${chart1.ascendant} | Chartruler: ${chart1.chartRuler} i ${chart1.chartRulerSign}\n\n${chart2.clientName}:\n${p2} | Asc: ${chart2.ascendant} | Chartruler: ${chart2.chartRuler} i ${chart2.chartRulerSign}\n\nVIKTIGE KRYSS-ASPEKTER:\n${crossAspects.slice(0, 12).join('\n') || 'Beregnes dynamisk'}\n\nReturner JSON:\n{\n  "title": "En poetisk og innsiktsfull tittel for deres relasjon",\n  "overview": "En mesterlig oversikt over relasjonens kjerne-dynamikk, tiltrekning og samspill (minimum 600 ord).",\n  "strengths": "En dyptgående analyse av styrkepunkter, harmoni og hva som binder dem sammen på et sjelelig nivå (minimum 500 ord).",\n  "challenges": "En konstruktiv utforskning av utfordringer, friksjonspunkter og vekstmuligheter (minimum 400 ord).",\n  "karmaticThemes": "En esoterisk analyse av karmiske temaer, tidligere livsforbindelser og felles sjelelig formål (minimum 400 ord).",\n  "guidance": "Konkret, praktisk og hjertevarm veiledning for å styrke relasjonen og navigere utfordringer (minimum 300 ord)."\n}`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-opus-20240229', max_tokens: 8192 });
     const data = extractJSON(raw);
@@ -986,23 +856,7 @@ Returner JSON:
       .join(' | ');
 
     const systemPrompt = `Du er AstroMason Solretur-analytiker, en "world-class" ekspert som gir klar, presis og dyptpløyende veiledning for det kommende året. Ingen Markdown.`;
-    const userMessage = `Analyser solreturen for ${natalChart.clientName} på ${targetLang}.
-
-NATAL NØKKELPUNKTER:
-Sol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}
-Ascendant natal: ${natalChart.ascendant}
-
-SOLRETURKART (${srChart.date}):
-Ascendant SR: ${srChart.ascendant}
-MC SR: ${srChart.mc}
-${srPlanets}
-
-Skriv 5 dyptgående avsnitt (800+ ord totalt):
-1. Årets overordnede sjelelige tema: Hva er den sentrale lærdommen og det overordnede fokuset for ${natalChart.clientName}s sjel dette året?
-2. Karriere, kall og offentlig liv: Hvordan kan ${natalChart.clientName} best realisere sitt potensial i verden utenfor?
-3. Kjærlighet, relasjoner og emosjonell vekst: Hvilke temaer vil dominere i hjerte og relasjoner?
-4. Indre vekst, utfordringer og personlig utvikling: Hvilke indre demoner og skatter vil komme til overflaten?
-5. Strategiske råd og timing: Gi konkrete, måned-for-måned-råd (hvis mulig) og pek på de mest kritiske periodene for handling eller refleksjon.`;
+    const userMessage = `Analyser solreturen for ${natalChart.clientName} på ${targetLang}.\n\nNATAL NØKKELPUNKTER:\nSol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}\nAscendant natal: ${natalChart.ascendant}\n\nSOLRETURKART (${srChart.date}):\nAscendant SR: ${srChart.ascendant}\nMC SR: ${srChart.mc}\n${srPlanets}\n\nSkriv 5 dyptgående avsnitt (800+ ord totalt):\n1. Årets overordnede sjelelige tema: Hva er den sentrale lærdommen og det overordnede fokuset for ${natalChart.clientName}s sjel dette året?\n2. Karriere, kall og offentlig liv: Hvordan kan ${natalChart.clientName} best realisere sitt potensial i verden utenfor?\n3. Kjærlighet, relasjoner og emosjonell vekst: Hvilke temaer vil dominere i hjerte og relasjoner?\n4. Indre vekst, utfordringer og personlig utvikling: Hvilke indre demoner og skatter vil komme til overflaten?\n5. Strategiske råd og timing: Gi konkrete, måned-for-måned-råd (hvis mulig) og pek på de mest kritiske periodene for handling eller refleksjon.`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3500 });
     return cleanAstroText(raw);
@@ -1065,27 +919,7 @@ Skriv 5 dyptgående avsnitt (800+ ord totalt):
     }
 
     const systemPrompt = `Du er AstroMasons Progresjonsanalytiker, en "world-class" ekspert som bruker sekundære progresjoner for å avsløre den indre sjelens evolusjonære reise. Ingen Markdown.`;
-    const userMessage = `Analyser progresjonskartet for ${natalChart.clientName} på ${targetLang}.
-
-NATAL NØKKELPUNKTER:
-Sol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}
-Måne natal: ${natalChart.positions.find(p => p.name === 'Månen')?.sign}
-Ascendant: ${natalChart.ascendant}
-
-PROGRESERTE PLANETER (${progChart.date}):
-${progPlanets}
-Progresert Ascendant: ${progChart.ascendant}
-Progresert MC: ${progChart.mc}
-
-KRYSS-ASPEKTER (natal → progresert):
-${crossAspects.slice(0, 8).join('\n') || 'Ingen eksakte aspekter'}
-
-Skriv 5 dyptgående avsnitt (800+ ord totalt):
-1.  **Progresert Sol:** Din sjelelige livsretning og kjerneidentitet i denne fasen.
-2.  **Progresert Måne:** Ditt nåværende emosjonelle landskap og dine innerste behov.
-3.  **Aktiverte Livstemaer:** Analyse av progreserte planeter som skifter tegn eller hus, og viktige aspekter til natale planeter.
-4.  **Sjelens Utviklingsvei:** Hovedtemaer for de neste 2-3 årene, basert på bevegelsene til de indre planetene.
-5.  **Personlig Veiledning:** Konkrete råd for hvordan ${natalChart.clientName} kan best samarbeide med disse indre endringene. Hva er sjelen klar for å integrere nå?`;
+    const userMessage = `Analyser progresjonskartet for ${natalChart.clientName} på ${targetLang}.\n\nNATAL NØKKELPUNKTER:\nSol: ${natalChart.positions.find(p => p.name === 'Solen')?.sign}, Hus ${natalChart.positions.find(p => p.name === 'Solen')?.house}\nMåne natal: ${natalChart.positions.find(p => p.name === 'Månen')?.sign}\nAscendant: ${natalChart.ascendant}\n\nPROGRESERTE PLANETER (${progChart.date}):\n${progPlanets}\nProgresert Ascendant: ${progChart.ascendant}\nProgresert MC: ${progChart.mc}\n\nKRYSS-ASPEKTER (natal → progresert):\n${crossAspects.slice(0, 8).join('\n') || 'Ingen eksakte aspekter'}\n\nSkriv 5 dyptgående avsnitt (800+ ord totalt):\n1.  **Progresert Sol:** Din sjelelige livsretning og kjerneidentitet i denne fasen.\n2.  **Progresert Måne:** Ditt nåværende emosjonelle landskap og dine innerste behov.\n3.  **Aktiverte Livstemaer:** Analyse av progreserte planeter som skifter tegn eller hus, og viktige aspekter til natale planeter.\n4.  **Sjelens Utviklingsvei:** Hovedtemaer for de neste 2-3 årene, basert på bevegelsene til de indre planetene.\n5.  **Personlig Veiledning:** Konkrete råd for hvordan ${natalChart.clientName} kan best samarbeide med disse indre endringene. Hva er sjelen klar for å integrere nå?`;
 
     const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 3500 });
     return cleanAstroText(raw);
@@ -1096,21 +930,9 @@ Skriv 5 dyptgående avsnitt (800+ ord totalt):
   generateNumerologyReport: async (name: string, birthDate: string, numbers: Record<string, number>, lang: Language) => {
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
 
-    const systemPrompt = `Du er AstroMasons Numerologi-mester, en "world-class" ekspert med dyp kunnskap i Pythagoreisk og Kaballistisk numerologi. Du leverer innsikt som er både presis og sjelelig opplysende.
-Ingen Markdown. Returner KUN gyldig JSON.`;
+    const systemPrompt = `Du er AstroMasons Numerologi-mester, en "world-class" ekspert med dyp kunnskap i Pythagoreisk og Kaballistisk numerologi. Du leverer innsikt som er både presis og sjelelig opplysende.\nIngen Markdown. Returner KUN gyldig JSON.`;
 
-    const userMessage = `Generer en komplett og dyptpløyende numerologirapport på ${targetLang} for ${name} (${birthDate}).
-
-Tall: ${JSON.stringify(numbers)}
-
-JSON-format:
-{
-  "title": "En passende og innsiktsfull tittel",
-  "coreNumbers": [{ "number": "Livsvei", "value": 7, "interpretation": "En dyptgående tolkning av tallets betydning i denne posisjonen (minimum 200 ord)." }],
-  "karmaticLessons": "En innsiktsfull analyse av karmiske lærdommer og gjeld (minimum 300 ord).",
-  "personalYear": "En detaljert beskrivelse av det personlige året og dets temaer (minimum 250 ord).",
-  "guidance": "Praktiske råd for hvordan man best kan navigere vibrasjonene i tallene (minimum 200 ord)."
-}`;
+    const userMessage = `Generer en komplett og dyptpløyende numerologirapport på ${targetLang} for ${name} (${birthDate}).\n\nTall: ${JSON.stringify(numbers)}\n\nJSON-format:\n{\n  "title": "En passende og innsiktsfull tittel",\n  "coreNumbers": [{ "number": "Livsvei", "value": 7, "interpretation": "En dyptgående tolkning av tallets betydning i denne posisjonen (minimum 200 ord)." }],\n  "karmaticLessons": "En innsiktsfull analyse av karmiske lærdommer og gjeld (minimum 300 ord).",\n  "personalYear": "En detaljert beskrivelse av det personlige året og dets temaer (minimum 250 ord).",\n  "guidance": "Praktiske råd for hvordan man best kan navigere vibrasjonene i tallene (minimum 200 ord)."\n}`;
 
     try {
       const raw = await askClaude({ system: systemPrompt, messages: [{ role: 'user', content: userMessage }], model: 'claude-3-sonnet-20240229', max_tokens: 4096 });
