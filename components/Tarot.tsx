@@ -70,6 +70,15 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
         setCards([]);
     }, [lang]);
 
+    // Image preloader & verifier
+    useEffect(() => {
+      FULL_TAROT_DECK.forEach(card => {
+        const img = new Image();
+        img.src = card.img;
+        img.onerror = () => console.warn(`Failed to load tarot image: ${card.name} - ${card.img}`);
+      });
+    }, []);
+
     const handleDraw = () => {
         const sub = localStorage.getItem('soul_subscription');
         if (sub !== 'Master' && credits < 1) {

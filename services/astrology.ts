@@ -701,22 +701,21 @@ export const AstrologyService = {
   ) => {
     const targetLang = LANGUAGE_NAMES[lang] || 'ENGLISH';
     
-    // FIX: Standardize card data structure before sending
     const sanitizedCards = cards.map(c => {
-      const cardData = c.card || c; // Handle nested and flat structures
+      const cardData = c.card || c;
       return {
         name: cardData.name,
+        isReversed: c.isReversed,
         suit: cardData.suit || 'major',
-        img: cardData.img, // Ensure img is passed
+        img: cardData.img,
         keywords: cardData.keywords || [],
         meaning: cardData.meaning || '',
-        isReversed: c.isReversed || false
       };
     });
 
     const params = {
         isTarotReading: true,
-        cards: sanitizedCards, // Use the sanitized array
+        cards: sanitizedCards,
         spread,
         style,
         clientData,
