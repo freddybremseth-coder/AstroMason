@@ -208,12 +208,7 @@ Tonalitet: Elevated, visdomssøkende, transcendent
   }
 };
 
-function generateCustomTarotPrompt(
-  style,
-  spreadType,
-  question,
-  querentsituation
-) {
+function generateCustomTarotPrompt(style, spreadType, question, querentsituation) {
   const styleKey = READING_STYLES[style] ? style : 'general';
   const styleConfig = READING_STYLES[styleKey];
   
