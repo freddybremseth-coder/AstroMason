@@ -238,12 +238,19 @@ Nå, gi en PROFESJONELL tolkning som følger ALL guidance ovenfor.
 
 // --- End of inlined content ---
 
-const client = new Anthropic();
-
 export default async (req, res) => {
     if (req.method !== 'POST') {
         return res.status(405).send({ error: { message: 'Only POST allowed' } });
     }
+
+    const authHeader = req.headers.authorization;
+    const apiKey = authHeader ? authHeader.split(' ')[1] : null;
+
+    if (!apiKey) {
+        return res.status(401).send({ error: { message: 'Missing API key' } });
+    }
+
+    const client = new Anthropic({ apiKey });
 
     const { cards, spread, style, clientData, userContext, lang } = req.body;
 
