@@ -205,6 +205,21 @@ ESOTERISK & KARMISK FOKUS:
 - Astrologiske koblinger til Major Arcana
 Tonalitet: Elevated, visdomssøkende, transcendent
     `
+  },
+  'classical': {
+    name: 'Klassisk Tarot-Tradisjon',
+    focus: 'Tradisjonelle tolkninger, konkrete råd, tidslinje',
+    extraPrompt: `
+KLASSISK TRADISJONELT FOKUS:
+- Bruk tradisjonell RWS-tolkning som grunnlag
+- Hva kan querent GJØRE akkurat nå?
+- Hvordan manifesteres denne energien i dagliglivet?
+- Gi timeline hvis mulig (Aces = dager/uker, 10s = måneder)
+- Fokuser på Pentacles og Wands for manifestasjon
+- Konkrete, praktiske og handlingsrettede råd
+- Integrer elemental dignities og numerologiske temaer
+Tonalitet: Direkte, handlingsorientert, konkret, tradisjonell
+    `
   }
 };
 
@@ -254,47 +269,62 @@ export default async (req, res) => {
         const client = new Anthropic({ apiKey });
         const { isTarotReading, ...restOfBody } = req.body;
 
-        if (!isTarotReading) {
-            // For now, this endpoint is tarot-specific.
-            // A more generic handler could be implemented here for other call types.
-            return res.status(400).send({ error: { message: 'This endpoint is for tarot readings only.' } });
+        if (isTarotReading) {
+            // Tarot reading flow
+            const { cards, spread, style, clientData, userContext, model, max_tokens } = restOfBody;
+
+            if (!cards || !spread || !style || !clientData) {
+                 return res.status(400).send({ error: { message: 'Missing required tarot data in request body.' } });
+            }
+
+            const tarotSystemPrompt = generateCustomTarotPrompt(style, spread.name, userContext, `Klient: ${clientData.clientName}`);
+
+            const cardDetails = cards.map(c => {
+                const cardName = c.card?.name || c.name || 'Ukjent';
+                return `${cardName}${c.isReversed ? ' (Reversert)' : ''}`;
+            }).join(', ');
+
+            const userMessage = `
+            ### KORTSTOKK
+            ${cardDetails}
+
+            ### POSISJONER
+            ${spread.positions.join(', ')}
+
+            ### TOLKNING
+            Utfør en dyptgående tolkning basert på protokollen.
+            `;
+
+            const requestBody = {
+                model: model || 'claude-3-sonnet-20240229',
+                max_tokens: max_tokens || 4096,
+                system: tarotSystemPrompt,
+                messages: [{
+                    role: 'user',
+                    content: userMessage
+                }]
+            };
+
+            const msg = await client.messages.create(requestBody);
+
+            const responseText = msg.content[0].text;
+            return res.status(200).json({ content: [{ type: 'text', text: responseText }] });
         }
 
-        const { cards, spread, style, clientData, userContext, model, max_tokens } = restOfBody;
+        // General Claude API call (astrology reports, horoscopes, etc.)
+        const { system, messages, model, max_tokens } = restOfBody;
 
-        // Basic validation
-        if (!cards || !spread || !style || !clientData) {
-             return res.status(400).send({ error: { message: 'Missing required tarot data in request body.' } });
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).send({ error: { message: 'Missing required "messages" field in request body.' } });
         }
-
-        const tarotSystemPrompt = generateCustomTarotPrompt(style, spread.name, userContext, `Klient: ${clientData.clientName}`);
-        
-        const cardDetails = cards.map(c => {
-            const cardName = c.card?.name || c.name || 'Ukjent';
-            return `${cardName}${c.isReversed ? ' (Reversert)' : ''}`;
-        }).join(', ');
-
-        const userMessage = `
-        ### KORTSTOKK
-        ${cardDetails}
-
-        ### POSISJONER
-        ${spread.positions.join(', ')}
-
-        ### TOLKNING
-        Utfør en dyptgående tolkning basert på protokollen.
-        `;
 
         const requestBody = {
             model: model || 'claude-3-sonnet-20240229',
             max_tokens: max_tokens || 4096,
-            system: tarotSystemPrompt,
-            messages: [{
-                role: 'user',
-                content: userMessage
-            }]
+            ...(system ? { system } : {}),
+            messages
         };
-        
+
         const msg = await client.messages.create(requestBody);
 
         const responseText = msg.content[0].text;

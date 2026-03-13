@@ -74,6 +74,8 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
     useEffect(() => {
       FULL_TAROT_DECK.forEach(card => {
         const img = new Image();
+        img.referrerPolicy = 'no-referrer';
+        img.crossOrigin = 'anonymous';
         img.src = card.img;
         img.onerror = () => console.warn(`Failed to load tarot image: ${card.name} - ${card.img}`);
       });
@@ -342,7 +344,7 @@ const Tarot: React.FC<TarotProps> = ({ onNavigateToSettings }) => {
                                                 <div className={`relative w-full h-full transition-transform duration-700 transform-style-3d ${revealed[i] ? 'rotate-y-180' : 'group-hover:scale-105'}`}>
                                                     <div className="absolute inset-0 backface-hidden"><CardBack /></div>
                                                     <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl overflow-hidden border border-amber-500/20 bg-[#0a0a16] shadow-2xl">
-                                                        <img src={c.card.img} alt={c.card.name} className={`w-full h-full object-cover ${c.isReversed ? 'rotate-180' : ''}`} />
+                                                        <img src={c.card.img} alt={c.card.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className={`w-full h-full object-cover ${c.isReversed ? 'rotate-180' : ''}`} />
                                                         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
                                                             <p className="text-[11px] font-serif text-white leading-tight font-bold">{c.card.name}</p>
                                                             {c.isReversed && <span className="text-[9px] text-red-500 font-black uppercase mt-1 block">Reversert</span>}

@@ -216,6 +216,23 @@ ESOTERISK & KARMISK FOKUS:
 
 Tonalitet: Elevated, visdomssøkende, transcendent
     `
+  },
+
+  'classical': {
+    name: 'Klassisk Tarot-Tradisjon',
+    focus: 'Tradisjonelle tolkninger, konkrete råd, tidslinje',
+    extraPrompt: `
+KLASSISK TRADISJONELT FOKUS:
+- Bruk tradisjonell RWS-tolkning som grunnlag
+- Hva kan querent GJØRE akkurat nå?
+- Hvordan manifesteres denne energien i dagliglivet?
+- Gi timeline hvis mulig (Aces = dager/uker, 10s = måneder)
+- Fokuser på Pentacles og Wands for manifestasjon
+- Konkrete, praktiske og handlingsrettede råd
+- Integrer elemental dignities og numerologiske temaer
+
+Tonalitet: Direkte, handlingsorientert, konkret, tradisjonell
+    `
   }
 };
 

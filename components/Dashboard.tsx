@@ -246,7 +246,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         {/* Daily Tarot Card */}
         <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/20 border border-indigo-500/20 p-8 rounded-[2.5rem] flex items-center gap-8 group hover:border-indigo-500/40 transition-all cursor-pointer" onClick={() => onNavigate('tarot')}>
           <div className="relative w-20 h-28 shrink-0 rounded-xl overflow-hidden border border-amber-500/20 shadow-xl">
-            <img src={dailyCard.img} alt={dailyCard.name} className="w-full h-full object-cover" />
+            <img src={dailyCard.img} alt={dailyCard.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           </div>
           <div className="space-y-2">
