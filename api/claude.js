@@ -270,8 +270,8 @@ export default async (req, res) => {
         const { isTarotReading, ...restOfBody } = req.body;
 
         if (isTarotReading) {
-            // Tarot reading flow
-            const { cards, spread, style, clientData, userContext, model, max_tokens } = restOfBody;
+            // Tarot reading flow - uses streaming to avoid gateway timeout
+            const { cards, spread, style, clientData, userContext, model, max_tokens, stream: useStream } = restOfBody;
 
             if (!cards || !spread || !style || !clientData) {
                  return res.status(400).send({ error: { message: 'Missing required tarot data in request body.' } });
@@ -304,6 +304,23 @@ export default async (req, res) => {
                     content: userMessage
                 }]
             };
+
+            if (useStream) {
+                // Stream response using SSE to avoid gateway timeout
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+
+                const stream = await client.messages.stream(requestBody);
+
+                for await (const event of stream) {
+                    if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+                        res.write(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`);
+                    }
+                }
+                res.write('data: [DONE]\n\n');
+                return res.end();
+            }
 
             const msg = await client.messages.create(requestBody);
 

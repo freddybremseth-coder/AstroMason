@@ -154,6 +154,50 @@ const callClaude = async (params: any) => {
     return res.json() as Promise<{ content: { type: string; text: string }[] }>;
   };
 
+const callClaudeStream = async (params: any): Promise<string> => {
+    const apiKey = localStorage.getItem('ANTHROPIC_API_KEY') || '';
+    if (!apiKey) {
+      throw new Error('Ingen API-nøkkel funnet. Gå til Innstillinger og lim inn din Anthropic API-nøkkel (sk-ant-...).');
+    }
+
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({ ...params, stream: true }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error?.message || `HTTP ${res.status}`);
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('Streaming ikke støttet');
+
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.text) fullText += data.text;
+          } catch {}
+        }
+      }
+    }
+
+    return fullText;
+  };
+
 
 const getClient = () => ({
   messages: { create: callClaude },
@@ -725,7 +769,7 @@ export const AstrologyService = {
         max_tokens: 4096
     };
 
-    const raw = await askClaude(params);
+    const raw = await callClaudeStream(params);
     return cleanAstroText(raw);
   },
 
