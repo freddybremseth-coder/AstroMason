@@ -296,7 +296,7 @@ export default async (req, res) => {
             `;
 
             const requestBody = {
-                model: model || 'claude-3-5-sonnet-20241022',
+                model: model || 'claude-sonnet-4-20250514',
                 max_tokens: max_tokens || 4096,
                 system: tarotSystemPrompt,
                 messages: [{
@@ -319,7 +319,7 @@ export default async (req, res) => {
         }
 
         const requestBody = {
-            model: model || 'claude-3-5-sonnet-20241022',
+            model: model || 'claude-sonnet-4-20250514',
             max_tokens: max_tokens || 4096,
             ...(system ? { system } : {}),
             messages
