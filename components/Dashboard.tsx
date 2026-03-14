@@ -43,7 +43,11 @@ const getDailyCard = () => {
   if (cached) {
     try {
       const parsed = JSON.parse(cached);
-      if (parsed.date === dateStr) return parsed.card;
+      if (parsed.date === dateStr) {
+        // Always use fresh card data from constants to avoid stale cached URLs
+        const freshCard = FULL_TAROT_DECK.find(c => c.id === parsed.card.id);
+        if (freshCard) return freshCard;
+      }
     } catch {}
   }
   // Seed from date string hash for stable daily card
